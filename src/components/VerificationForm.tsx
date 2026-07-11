@@ -16,9 +16,9 @@ export default function VerificationForm() {
 
     try {
       const result = await invoke<VerifyResult>('verify_payment', {
-        usuario_empresa: usuario,
-        monto_empresa: parseFloat(monto),
-        fecha_empresa: fecha,
+        usuarioEmpresa: usuario,
+        montoEmpresa: parseFloat(monto),
+        fechaEmpresa: fecha,
       })
       setResultado(result)
     } catch (err: any) {

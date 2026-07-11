@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { invoke } from '@tauri-apps/api/core'
-import type { PagoBinance } from '../types'
+import type { PagoBinance, ExportResult } from '../types'
 import ReportTable from '../components/ReportTable'
 
 export default function Reports() {
@@ -8,12 +8,15 @@ export default function Reports() {
   const [hasta, setHasta] = useState('')
   const [pagos, setPagos] = useState<PagoBinance[]>([])
   const [loading, setLoading] = useState(false)
+  const [exportando, setExportando] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [exportMsg, setExportMsg] = useState<string | null>(null)
 
   const buscarReportes = async () => {
     if (!desde || !hasta) return
     setLoading(true)
     setError(null)
+    setExportMsg(null)
     try {
       const result = await invoke<PagoBinance[]>('get_reports', {
         desde,
@@ -27,6 +30,23 @@ export default function Reports() {
     }
   }
 
+  const exportarExcel = async () => {
+    if (!desde || !hasta) return
+    setExportando(true)
+    setExportMsg(null)
+    try {
+      const result = await invoke<ExportResult>('export_reports', {
+        desde,
+        hasta,
+      })
+      setExportMsg(result.mensaje)
+    } catch (err: any) {
+      setExportMsg(`Error al exportar: ${err}`)
+    } finally {
+      setExportando(false)
+    }
+  }
+
   return (
     <div className="max-w-5xl mx-auto">
       <div className="mb-8 border-b border-slate-800 pb-4">
@@ -35,8 +55,8 @@ export default function Reports() {
       </div>
 
       <div className="bg-slate-800 p-6 rounded-xl border border-slate-700 mb-6">
-        <div className="flex gap-4 items-end">
-          <div className="flex-1">
+        <div className="flex gap-4 items-end flex-wrap">
+          <div className="flex-1 min-w-[160px]">
             <label className="block text-xs font-medium text-slate-400 mb-1">Desde</label>
             <input
               type="date"
@@ -45,7 +65,7 @@ export default function Reports() {
               className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-amber-500"
             />
           </div>
-          <div className="flex-1">
+          <div className="flex-1 min-w-[160px]">
             <label className="block text-xs font-medium text-slate-400 mb-1">Hasta</label>
             <input
               type="date"
@@ -61,9 +81,23 @@ export default function Reports() {
           >
             {loading ? 'Buscando...' : 'Buscar'}
           </button>
+          {pagos.length > 0 && (
+            <button
+              onClick={exportarExcel}
+              disabled={exportando}
+              className="bg-emerald-600 hover:bg-emerald-700 disabled:bg-slate-700 disabled:cursor-not-allowed text-white font-medium px-6 py-2 rounded-lg text-sm transition-colors"
+            >
+              {exportando ? 'Exportando...' : 'Exportar a Excel'}
+            </button>
+          )}
         </div>
         {error && (
           <p className="mt-3 text-sm text-rose-400">{error}</p>
+        )}
+        {exportMsg && (
+          <p className={`mt-3 text-sm font-medium ${exportMsg.startsWith('Error') ? 'text-rose-400' : 'text-emerald-400'}`}>
+            {exportMsg}
+          </p>
         )}
       </div>
 

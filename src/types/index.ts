@@ -22,6 +22,28 @@ export interface VerifyResult {
   data?: PagoBinance
 }
 
+export interface ExportResult {
+  success: boolean
+  file_path: string
+  mensaje: string
+}
+
+export interface ImportRowDetail {
+  fila: number
+  usuario: string
+  monto: number
+  fecha: string
+  resultado: string
+}
+
+export interface ImportResult {
+  total_filas: number
+  verificados: number
+  no_encontrados: number
+  errores: number
+  detalle: ImportRowDetail[]
+}
+
 export interface AppSettings {
   imap_user: string
   imap_password: string

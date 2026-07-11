@@ -24,8 +24,8 @@ export default function Settings() {
     setSaved(false)
     try {
       await invoke('save_settings', {
-        imap_user: imapUser,
-        imap_password: imapPassword,
+        imapUser: imapUser,
+        imapPassword: imapPassword,
       })
       setSaved(true)
       setTimeout(() => setSaved(false), 3000)
