@@ -1,0 +1,42 @@
+{
+  "$schema": "https://raw.githubusercontent.com/nicedouble/tauri/main/crates/tauri-config-schema/schema.json",
+  "productName": "Binance Pay Auditor",
+  "version": "1.0.0",
+  "identifier": "com.binance-auditor.app",
+  "build": {
+    "beforeDevCommand": "npm run dev",
+    "devUrl": "http://localhost:5173",
+    "beforeBuildCommand": "npm run build",
+    "frontendDist": "../dist"
+  },
+  "app": {
+    "withGlobalTauri": true,
+    "security": {
+      "csp": null
+    },
+    "windows": [
+      {
+        "title": "Binance Pay Auditor",
+        "width": 1100,
+        "height": 800,
+        "resizable": true,
+        "center": true
+      }
+    ]
+  },
+  "bundle": {
+    "active": true,
+    "targets": "all",
+    "icon": [
+      "icons/32x32.png",
+      "icons/128x128.png",
+      "icons/128x128@2x.png",
+      "icons/icon.icns",
+      "icons/icon.ico"
+    ],
+    "windows": {
+      "wix": null,
+      "nsis": null
+    }
+  }
+}

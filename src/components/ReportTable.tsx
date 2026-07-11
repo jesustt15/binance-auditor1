@@ -1,0 +1,78 @@
+import type { PagoBinance } from '../types'
+
+interface Props {
+  pagos: PagoBinance[]
+}
+
+export default function ReportTable({ pagos }: Props) {
+  if (pagos.length === 0) {
+    return (
+      <div className="text-center text-slate-500 py-8 text-sm">
+        No hay pagos en el rango de fechas seleccionado.
+      </div>
+    )
+  }
+
+  const totalVerificados = pagos.filter(p => p.estado === 'verificado').length
+  const montoTotal = pagos.reduce((sum, p) => sum + p.monto, 0)
+
+  return (
+    <div>
+      <div className="grid grid-cols-3 gap-4 mb-6">
+        <div className="bg-slate-800 p-4 rounded-lg border border-slate-700">
+          <p className="text-xs text-slate-400">Total Pagos</p>
+          <p className="text-xl font-bold text-slate-100">{pagos.length}</p>
+        </div>
+        <div className="bg-slate-800 p-4 rounded-lg border border-slate-700">
+          <p className="text-xs text-slate-400">Verificados</p>
+          <p className="text-xl font-bold text-emerald-400">{totalVerificados}</p>
+        </div>
+        <div className="bg-slate-800 p-4 rounded-lg border border-slate-700">
+          <p className="text-xs text-slate-400">Monto Total</p>
+          <p className="text-xl font-bold text-amber-400">{montoTotal.toFixed(2)} USDT</p>
+        </div>
+      </div>
+
+      <div className="overflow-x-auto">
+        <table className="w-full text-sm">
+          <thead>
+            <tr className="border-b border-slate-700 text-slate-400 text-xs uppercase">
+              <th className="text-left py-2 px-3">ID</th>
+              <th className="text-left py-2 px-3">Usuario</th>
+              <th className="text-right py-2 px-3">Monto</th>
+              <th className="text-left py-2 px-3">Fecha Correo</th>
+              <th className="text-center py-2 px-3">Estado</th>
+              <th className="text-left py-2 px-3">Observaciones</th>
+            </tr>
+          </thead>
+          <tbody>
+            {pagos.map((pago) => (
+              <tr key={pago.id} className="border-b border-slate-800 hover:bg-slate-800/50">
+                <td className="py-2 px-3 text-slate-500">{pago.id}</td>
+                <td className="py-2 px-3 text-slate-200">{pago.usuario_remitente}</td>
+                <td className="py-2 px-3 text-right text-slate-200 font-mono">
+                  {pago.monto.toFixed(2)} {pago.moneda}
+                </td>
+                <td className="py-2 px-3 text-slate-400 text-xs">
+                  {new Date(pago.fecha_correo).toLocaleString('es-AR')}
+                </td>
+                <td className="py-2 px-3 text-center">
+                  <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${
+                    pago.estado === 'verificado'
+                      ? 'bg-emerald-900/50 text-emerald-400 border border-emerald-700'
+                      : 'bg-amber-900/50 text-amber-400 border border-amber-700'
+                  }`}>
+                    {pago.estado}
+                  </span>
+                </td>
+                <td className="py-2 px-3 text-slate-500 text-xs max-w-xs truncate">
+                  {pago.observaciones || '-'}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  )
+}

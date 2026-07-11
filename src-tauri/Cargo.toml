@@ -1,0 +1,20 @@
+[package]
+name = "binance-auditor"
+version = "1.0.0"
+description = "Auditoria y conciliacion de pagos de Binance"
+authors = []
+edition = "2021"
+
+[dependencies]
+tauri = { version = "2", features = [] }
+tauri-plugin-shell = "2"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+rusqlite = { version = "0.32", features = ["bundled"] }
+chrono = { version = "0.4", features = ["serde"] }
+imap = { version = "3.0.0-alpha.15", default-features = false, features = ["rustls-tls"] }
+mailparse = "0.15"
+regex = "1"
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
