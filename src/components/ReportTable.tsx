@@ -1,4 +1,5 @@
 import type { PagoBinance } from '../types'
+import { formatFecha } from '../lib/format'
 
 interface Props {
   pagos: PagoBinance[]
@@ -54,7 +55,7 @@ export default function ReportTable({ pagos }: Props) {
                   {pago.monto.toFixed(2)} {pago.moneda}
                 </td>
                 <td className="py-2 px-3 text-slate-400 text-xs">
-                  {new Date(pago.fecha_correo).toLocaleString('es-AR')}
+                  {formatFecha(pago.fecha_correo)}
                 </td>
                 <td className="py-2 px-3 text-center">
                   <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${

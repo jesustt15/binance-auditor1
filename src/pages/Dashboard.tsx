@@ -3,9 +3,9 @@ import { invoke } from '@tauri-apps/api/core'
 import SyncButton from '../components/SyncButton'
 import VerificationForm from '../components/VerificationForm'
 import type { PagoBinance, ImportResult } from '../types'
+import { formatFecha } from '../lib/format'
 
 export default function Dashboard() {
-  const [syncCount, setSyncCount] = useState(0)
   const [pagosBD, setPagosBD] = useState<PagoBinance[] | null>(null)
   const [loadingBD, setLoadingBD] = useState(false)
   const [desdeBD, setDesdeBD] = useState('')
@@ -15,6 +15,17 @@ export default function Dashboard() {
   const [csvImportando, setCsvImportando] = useState(false)
   const [csvResultado, setCsvResultado] = useState<ImportResult | null>(null)
   const [csvError, setCsvError] = useState<string | null>(null)
+
+  const copiarPagos = () => {
+    if (!pagosBD || pagosBD.length === 0) return
+    // Extraer solo la fecha YYYY-MM-DD del RFC3339
+    const toISODate = (rfc: string) => rfc.slice(0, 10)
+    const csv = [
+      'usuario,monto,fecha',
+      ...pagosBD.map(p => `${p.usuario_remitente},${p.monto},${toISODate(p.fecha_correo)}`),
+    ].join('\n')
+    navigator.clipboard.writeText(csv)
+  }
 
   const listarPagos = async () => {
     setLoadingBD(true)
@@ -61,7 +72,7 @@ export default function Dashboard() {
           <h1 className="text-2xl font-bold tracking-tight">Binance Pay Auditor v1.0</h1>
           <p className="text-slate-400 text-sm">Conciliacion de pagos</p>
         </div>
-        <SyncButton onSyncComplete={() => setSyncCount(c => c + 1)} />
+        <SyncButton onSyncComplete={() => {}} />
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
@@ -138,7 +149,7 @@ export default function Dashboard() {
                           <td className="py-1 pr-2 text-slate-600">{row.fila}</td>
                           <td className="py-1 pr-2 text-slate-400">{row.usuario}</td>
                           <td className="py-1 pr-2 text-slate-400">{row.monto}</td>
-                          <td className="py-1 pr-2 text-slate-400">{row.fecha}</td>
+                          <td className="py-1 pr-2 text-slate-400">{formatFecha(row.fecha)}</td>
                           <td className="py-1 pr-2">
                             <span className={`px-1.5 py-0.5 rounded text-[10px] font-medium ${
                               row.resultado === 'verificado' ? 'bg-emerald-950 text-emerald-400' :
@@ -192,6 +203,15 @@ export default function Dashboard() {
             >
               {loadingBD ? 'Cargando...' : (desdeBD && hastaBD ? 'Filtrar' : 'Listar Todos')}
             </button>
+            {pagosBD && pagosBD.length > 0 && (
+              <button
+                onClick={copiarPagos}
+                className="px-4 py-1.5 bg-slate-700 hover:bg-slate-600 text-slate-300 rounded text-xs font-medium transition-colors"
+                title="Copia usuario,monto,fecha en formato CSV para carga masiva"
+              >
+                Copiar
+              </button>
+            )}
           </div>
         </div>
 
@@ -218,7 +238,7 @@ export default function Dashboard() {
                       <td className="py-2 pr-4 font-mono text-slate-300">{p.usuario_remitente}</td>
                       <td className="py-2 pr-4 text-slate-300">{p.monto}</td>
                       <td className="py-2 pr-4 text-slate-400">{p.moneda}</td>
-                      <td className="py-2 pr-4 text-slate-400">{p.fecha_correo}</td>
+                      <td className="py-2 pr-4 text-slate-400">{formatFecha(p.fecha_correo)}</td>
                       <td className="py-2 pr-4">
                         <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${
                           p.estado === 'verificado' ? 'bg-emerald-950 text-emerald-400' : 'bg-amber-950 text-amber-400'
