@@ -13,7 +13,14 @@ export interface PagoBinance {
 export interface SyncResult {
   success: boolean
   mensajes_nuevos: number
+  total_procesados: number
   error?: string
+}
+
+export interface SyncProgress {
+  actual: number
+  total: number
+  nuevos: number
 }
 
 export interface VerifyResult {

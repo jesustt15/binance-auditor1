@@ -8,6 +8,7 @@ use db::PagoBinance;
 use settings::AppSettings;
 use serde::Serialize;
 use std::sync::Mutex;
+use std::time::Duration;
 
 struct AppState {
     db_conn: Mutex<rusqlite::Connection>,
@@ -17,6 +18,7 @@ struct AppState {
 struct SyncResult {
     success: bool,
     mensajes_nuevos: i64,
+    total_procesados: usize,
     error: Option<String>,
 }
 
@@ -28,21 +30,28 @@ struct VerifyResult {
 }
 
 #[tauri::command]
-fn sync_emails(state: tauri::State<AppState>) -> Result<SyncResult, String> {
+fn sync_emails(
+    app: tauri::AppHandle,
+) -> Result<SyncResult, String> {
     let settings = settings::load_settings();
     if settings.imap_user.is_empty() || settings.imap_password.is_empty() {
         return Ok(SyncResult {
             success: false,
             mensajes_nuevos: 0,
+            total_procesados: 0,
             error: Some("Configura las credenciales de IMAP primero en la seccion de ajustes.".to_string()),
         });
     }
 
-    let conn = state.db_conn.lock().map_err(|e| e.to_string())?;
-    match imap::sync_emails(&settings.imap_user, &settings.imap_password, &conn) {
-        Ok(count) => Ok(SyncResult {
+    let db_path = db::get_db_path();
+    let conn = rusqlite::Connection::open(db_path).map_err(|e| format!("DB open error: {}", e))?;
+    conn.busy_timeout(Duration::from_secs(5)).map_err(|e| e.to_string())?;
+
+    match imap::sync_emails(&settings.imap_user, &settings.imap_password, &conn, &app) {
+        Ok(stats) => Ok(SyncResult {
             success: true,
-            mensajes_nuevos: count,
+            mensajes_nuevos: stats.nuevos,
+            total_procesados: stats.total_procesados,
             error: None,
         }),
         Err(e) => {
@@ -50,6 +59,7 @@ fn sync_emails(state: tauri::State<AppState>) -> Result<SyncResult, String> {
             Ok(SyncResult {
                 success: false,
                 mensajes_nuevos: 0,
+                total_procesados: 0,
                 error: Some(e),
             })
         },

@@ -1,6 +1,6 @@
 [package]
 name = "binance-auditor"
-version = "1.0.0"
+version = "1.1.0"
 description = "Auditoria y conciliacion de pagos de Binance"
 authors = []
 edition = "2021"
@@ -13,6 +13,7 @@ serde_json = "1"
 rusqlite = { version = "0.32", features = ["bundled"] }
 chrono = { version = "0.4", features = ["serde"] }
 imap = { version = "3.0.0-alpha.15", default-features = false, features = ["rustls-tls"] }
+rustls-connector = "0.19"
 mailparse = "0.15"
 rust_xlsxwriter = "0.93"
 csv = "1.3"
