@@ -186,12 +186,50 @@ pub fn get_reports(conn: &Connection, desde: &str, hasta: &str) -> Result<Vec<Pa
     Ok(pagos)
 }
 
+pub fn get_reports_by_sender(conn: &Connection, desde: &str, hasta: &str, remitente: &str) -> Result<Vec<PagoBinance>> {
+    let mut stmt = conn.prepare(
+        "SELECT id, usuario_remitente, monto, moneda, fecha_correo, estado,
+                observaciones, verificado_en, creado_en
+         FROM pagos_binance
+         WHERE fecha_correo >= ?1 AND fecha_correo <= ?2
+           AND usuario_remitente LIKE ?3
+         ORDER BY fecha_correo DESC",
+    )?;
+
+    let pattern = format!("%{}%", remitente);
+    let pagos = stmt.query_map(params![desde, hasta, pattern], |row| {
+        Ok(PagoBinance {
+            id: row.get(0)?,
+            usuario_remitente: row.get(1)?,
+            monto: row.get(2)?,
+            moneda: row.get(3)?,
+            fecha_correo: row.get(4)?,
+            estado: row.get(5)?,
+            observaciones: row.get(6)?,
+            verificado_en: row.get(7)?,
+            creado_en: row.get(8)?,
+        })
+    })?.collect::<Result<Vec<_>>>()?;
+
+    Ok(pagos)
+}
+
+/// Formats an RFC3339 date string to DD/MM/YYYY for Excel display.
+fn format_fecha_ddmmyyyy(rfc3339: &str) -> String {
+    // Try parsing as RFC3339 first
+    if let Ok(dt) = chrono::DateTime::parse_from_rfc3339(rfc3339) {
+        return dt.format("%d/%m/%Y").to_string();
+    }
+    // Fallback: if already DD/MM/YYYY or unknown format, return as-is
+    rfc3339.to_string()
+}
+
 pub fn export_to_excel(pagos: &[PagoBinance], file_path: &str) -> std::result::Result<String, String> {
     let mut workbook = Workbook::new();
     let worksheet = workbook.add_worksheet();
 
-    // Headers — solo 3 columnas: Remitente, Monto, Fecha
-    let headers = ["Usuario Remitente", "Monto", "Fecha Correo"];
+    // Headers — Remitente, Monto, Moneda, Fecha, Estado
+    let headers = ["Usuario Remitente", "Monto", "Moneda", "Fecha Correo", "Estado"];
     let header_format = Format::new().set_bold().set_background_color(Color::RGB(0x1E293B)).set_font_color(Color::RGB(0xFBBF24));
 
     for (col, header) in headers.iter().enumerate() {
@@ -199,18 +237,35 @@ pub fn export_to_excel(pagos: &[PagoBinance], file_path: &str) -> std::result::R
             .map_err(|e| format!("Excel write error: {}", e))?;
     }
 
+    // Status color coding
+    let disponible_fmt = Format::new().set_background_color(Color::RGB(0xFEF3C7));
+    let verificado_fmt = Format::new().set_background_color(Color::RGB(0xD1FAE5));
+    let rechazado_fmt = Format::new().set_background_color(Color::RGB(0xFEE2E2));
+
     // Data rows
     for (row_idx, pago) in pagos.iter().enumerate() {
         let row = (row_idx + 1) as u32;
         worksheet.write(row, 0, &pago.usuario_remitente).map_err(|e| format!("Excel write error: {}", e))?;
         worksheet.write(row, 1, pago.monto).map_err(|e| format!("Excel write error: {}", e))?;
-        worksheet.write(row, 2, &pago.fecha_correo).map_err(|e| format!("Excel write error: {}", e))?;
+        worksheet.write(row, 2, &pago.moneda).map_err(|e| format!("Excel write error: {}", e))?;
+        worksheet.write(row, 3, &format_fecha_ddmmyyyy(&pago.fecha_correo)).map_err(|e| format!("Excel write error: {}", e))?;
+
+        // Color-coded estado
+        let estado_fmt = match pago.estado.as_str() {
+            "verificado" => &verificado_fmt,
+            "rechazado" => &rechazado_fmt,
+            _ => &disponible_fmt,
+        };
+        worksheet.write_with_format(row, 4, &pago.estado, estado_fmt)
+            .map_err(|e| format!("Excel write error: {}", e))?;
     }
 
     // Column widths
     worksheet.set_column_width(0, 25.0).map_err(|e| format!("Excel column width error: {}", e))?;
     worksheet.set_column_width(1, 15.0).map_err(|e| format!("Excel column width error: {}", e))?;
-    worksheet.set_column_width(2, 30.0).map_err(|e| format!("Excel column width error: {}", e))?;
+    worksheet.set_column_width(2, 10.0).map_err(|e| format!("Excel column width error: {}", e))?;
+    worksheet.set_column_width(3, 30.0).map_err(|e| format!("Excel column width error: {}", e))?;
+    worksheet.set_column_width(4, 15.0).map_err(|e| format!("Excel column width error: {}", e))?;
 
     workbook.save(file_path).map_err(|e| format!("Excel save error: {}", e))?;
 

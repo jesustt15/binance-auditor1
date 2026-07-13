@@ -1,3 +1,4 @@
+import { useState, useMemo } from 'react'
 import type { PagoBinance } from '../types'
 import { formatFecha } from '../lib/format'
 
@@ -6,6 +7,16 @@ interface Props {
 }
 
 export default function ReportTable({ pagos }: Props) {
+  const [pagina, setPagina] = useState(1)
+  const [porPagina, setPorPagina] = useState(20)
+
+  const totalPaginas = useMemo(() => Math.ceil(pagos.length / porPagina), [pagos.length, porPagina])
+
+  const pagosPaginados = useMemo(() => {
+    const inicio = (pagina - 1) * porPagina
+    return pagos.slice(inicio, inicio + porPagina)
+  }, [pagos, pagina, porPagina])
+
   if (pagos.length === 0) {
     return (
       <div className="text-center text-slate-500 py-8 text-sm">
@@ -47,7 +58,7 @@ export default function ReportTable({ pagos }: Props) {
             </tr>
           </thead>
           <tbody>
-            {pagos.map((pago) => (
+            {pagosPaginados.map((pago) => (
               <tr key={pago.id} className="border-b border-slate-800 hover:bg-slate-800/50">
                 <td className="py-2 px-3 text-slate-500">{pago.id}</td>
                 <td className="py-2 px-3 text-slate-200">{pago.usuario_remitente}</td>
@@ -73,6 +84,43 @@ export default function ReportTable({ pagos }: Props) {
             ))}
           </tbody>
         </table>
+      </div>
+
+      <div className="flex items-center justify-between mt-4 pt-4 border-t border-slate-700">
+        <div className="flex items-center gap-2 text-xs text-slate-400">
+          <span>Mostrar</span>
+          <select
+            value={porPagina}
+            onChange={(e) => { setPorPagina(Number(e.target.value)); setPagina(1) }}
+            className="bg-slate-900 border border-slate-700 rounded px-2 py-1 text-xs focus:outline-none focus:border-amber-500"
+          >
+            <option value={10}>10</option>
+            <option value={20}>20</option>
+            <option value={50}>50</option>
+            <option value={100}>100</option>
+          </select>
+          <span>de {pagos.length}</span>
+        </div>
+
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => setPagina(p => Math.max(1, p - 1))}
+            disabled={pagina === 1}
+            className="px-3 py-1 text-xs rounded bg-slate-800 border border-slate-700 text-slate-300 disabled:opacity-40 disabled:cursor-not-allowed hover:bg-slate-700 transition-colors"
+          >
+            Anterior
+          </button>
+          <span className="text-xs text-slate-400 min-w-[80px] text-center">
+            {pagina} / {totalPaginas}
+          </span>
+          <button
+            onClick={() => setPagina(p => Math.min(totalPaginas, p + 1))}
+            disabled={pagina === totalPaginas}
+            className="px-3 py-1 text-xs rounded bg-slate-800 border border-slate-700 text-slate-300 disabled:opacity-40 disabled:cursor-not-allowed hover:bg-slate-700 transition-colors"
+          >
+            Siguiente
+          </button>
+        </div>
       </div>
     </div>
   )

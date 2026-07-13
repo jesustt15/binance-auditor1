@@ -8,7 +8,9 @@ use db::PagoBinance;
 use settings::AppSettings;
 use serde::Serialize;
 use std::sync::Mutex;
+use std::thread;
 use std::time::Duration;
+use tauri_plugin_notification::NotificationExt;
 
 struct AppState {
     db_conn: Mutex<rusqlite::Connection>,
@@ -48,12 +50,23 @@ fn sync_emails(
     conn.busy_timeout(Duration::from_secs(5)).map_err(|e| e.to_string())?;
 
     match imap::sync_emails(&settings.imap_user, &settings.imap_password, &conn, &app) {
-        Ok(stats) => Ok(SyncResult {
-            success: true,
-            mensajes_nuevos: stats.nuevos,
-            total_procesados: stats.total_procesados,
-            error: None,
-        }),
+        Ok(stats) => {
+            // Trigger desktop notification for new payments
+            if stats.nuevos > 0 {
+                let _ = app
+                    .notification()
+                    .builder()
+                    .title("Binance Auditor")
+                    .body(&format!("{} pago(s) nuevo(s) detectado(s) y guardado(s).", stats.nuevos))
+                    .show();
+            }
+            Ok(SyncResult {
+                success: true,
+                mensajes_nuevos: stats.nuevos,
+                total_procesados: stats.total_procesados,
+                error: None,
+            })
+        }
         Err(e) => {
             eprintln!("[IMAP ERROR] {}", e);
             Ok(SyncResult {
@@ -147,6 +160,22 @@ fn get_reports(
     let fin = format!("{}T23:59:59", hasta);
 
     db::get_reports(&conn, &inicio, &fin)
+        .map_err(|e| format!("DB error: {}", e))
+}
+
+#[tauri::command]
+fn get_reports_by_sender(
+    desde: String,
+    hasta: String,
+    remitente: String,
+    state: tauri::State<AppState>,
+) -> Result<Vec<PagoBinance>, String> {
+    let conn = state.db_conn.lock().map_err(|e| e.to_string())?;
+
+    let inicio = format!("{}T00:00:00", desde);
+    let fin = format!("{}T23:59:59", hasta);
+
+    db::get_reports_by_sender(&conn, &inicio, &fin, &remitente)
         .map_err(|e| format!("DB error: {}", e))
 }
 
@@ -426,19 +455,326 @@ fn get_settings() -> Result<AppSettings, String> {
     Ok(settings::load_settings())
 }
 
+#[tauri::command]
+fn sync_historical(
+    since_date: String,
+    app: tauri::AppHandle,
+) -> Result<SyncResult, String> {
+    let settings = settings::load_settings();
+    if settings.imap_user.is_empty() || settings.imap_password.is_empty() {
+        return Ok(SyncResult {
+            success: false,
+            mensajes_nuevos: 0,
+            total_procesados: 0,
+            error: Some("Configura las credenciales de IMAP primero en la seccion de ajustes.".to_string()),
+        });
+    }
+
+    // Parse and validate the date (expected: YYYY-MM-DD)
+    let since_parsed = chrono::NaiveDate::parse_from_str(&since_date, "%Y-%m-%d")
+        .map_err(|e| format!("Fecha invalida (use YYYY-MM-DD): {}", e))?;
+    let since_imap = since_parsed.format("%d-%b-%Y").to_string();
+
+    let db_path = db::get_db_path();
+    let conn = rusqlite::Connection::open(db_path).map_err(|e| format!("DB open error: {}", e))?;
+    conn.busy_timeout(Duration::from_secs(10)).map_err(|e| e.to_string())?;
+
+    eprintln!("[HISTORICAL] Sync historico desde: {} (IMAP: {})", since_date, since_imap);
+
+    match imap::sync_emails_historical(&settings.imap_user, &settings.imap_password, &conn, &app, &since_imap) {
+        Ok(stats) => {
+            if stats.nuevos > 0 {
+                let _ = app
+                    .notification()
+                    .builder()
+                    .title("Binance Auditor")
+                    .body(&format!(
+                        "Sync historico completado: {} pago(s) nuevo(s) registrado(s).",
+                        stats.nuevos
+                    ))
+                    .show();
+            }
+            Ok(SyncResult {
+                success: true,
+                mensajes_nuevos: stats.nuevos,
+                total_procesados: stats.total_procesados,
+                error: None,
+            })
+        }
+        Err(e) => {
+            eprintln!("[HISTORICAL] IMAP error: {}", e);
+            Ok(SyncResult {
+                success: false,
+                mensajes_nuevos: 0,
+                total_procesados: 0,
+                error: Some(e),
+            })
+        }
+    }
+}
+
+#[tauri::command]
+fn import_excel(
+    file_path: String,
+    state: tauri::State<AppState>,
+) -> Result<ImportResult, String> {
+    use calamine::{open_workbook_auto, Reader, DataType};
+
+    let conn = state.db_conn.lock().map_err(|e| e.to_string())?;
+
+    let mut workbook: calamine::Sheets<_> = open_workbook_auto(&file_path)
+        .map_err(|e| format!("Error abriendo Excel '{}': {}", file_path, e))?;
+
+    // Read the first sheet
+    let range = workbook
+        .worksheet_range_at(0)
+        .ok_or("El archivo Excel no tiene hojas".to_string())?
+        .map_err(|e| format!("Error leyendo hoja: {}", e))?;
+
+    // Auto-detect column indices from header row
+    let headers: Vec<String> = range.rows()
+        .next()
+        .ok_or("El archivo Excel esta vacio".to_string())?
+        .iter()
+        .map(|c| c.as_string().unwrap_or_default().trim().to_lowercase())
+        .collect();
+
+    let find_col = |candidates: &[&str]| -> Option<usize> {
+        headers.iter().position(|h| candidates.iter().any(|c| h.contains(c)))
+    };
+
+    let col_usuario = find_col(&["usuario", "user", "remitente", "nombre"]);
+    let col_monto = find_col(&["monto", "amount", "importe"]);
+    let col_fecha = find_col(&["fecha", "date"]);
+
+    let (col_u, col_m, col_f) = match (col_usuario, col_monto, col_fecha) {
+        (Some(u), Some(m), Some(f)) => (u, m, f),
+        _ => {
+            eprintln!("[XLSX] Headers no detectados, usando posiciones fijas (0,1,2). Headers: {:?}", headers);
+            (0usize, 1usize, 2usize)
+        }
+    };
+
+    let mut resultados: Vec<ImportRowDetail> = Vec::new();
+    let mut verificados = 0usize;
+    let mut no_encontrados = 0usize;
+    let mut errores = 0usize;
+
+    // Skip header row (row index 0)
+    for (row_idx, row) in range.rows().enumerate().skip(1) {
+        let fila_num = row_idx + 2; // 1-indexed + header
+
+        let usuario = row.get(col_u).and_then(|c| c.as_string()).unwrap_or_default().trim().to_string();
+        let monto_str = row.get(col_m)
+            .and_then(|c| c.as_f64())
+            .map(|v| v.to_string())
+            .or_else(|| row.get(col_m).and_then(|c| c.as_string()).map(|s| s.replace(",", "").trim().to_string()))
+            .unwrap_or_default();
+        let fecha = row.get(col_f).and_then(|c| c.as_string()).unwrap_or_default().trim().to_string();
+
+        if usuario.is_empty() || monto_str.is_empty() || fecha.is_empty() {
+            resultados.push(ImportRowDetail {
+                fila: fila_num,
+                usuario,
+                monto: 0.0,
+                fecha,
+                resultado: "error: campos vacios".to_string(),
+            });
+            errores += 1;
+            continue;
+        }
+
+        let monto: f64 = match monto_str.parse() {
+            Ok(m) => m,
+            Err(e) => {
+                resultados.push(ImportRowDetail {
+                    fila: fila_num,
+                    usuario,
+                    monto: 0.0,
+                    fecha,
+                    resultado: format!("error: monto invalido '{}': {}", monto_str, e),
+                });
+                errores += 1;
+                continue;
+            }
+        };
+
+        // Try multiple date formats
+        let fecha_base = chrono::NaiveDate::parse_from_str(&fecha, "%Y-%m-%d")
+            .or_else(|_| chrono::NaiveDate::parse_from_str(&fecha, "%d/%m/%Y"))
+            .or_else(|_| chrono::NaiveDate::parse_from_str(&fecha, "%m/%d/%Y"))
+            .map_err(|e| format!("fecha invalida '{}': {}", fecha, e));
+
+        let fecha_base = match fecha_base {
+            Ok(d) => d,
+            Err(e) => {
+                resultados.push(ImportRowDetail {
+                    fila: fila_num,
+                    usuario: usuario.clone(),
+                    monto,
+                    fecha: fecha.clone(),
+                    resultado: format!("error: {}", e),
+                });
+                errores += 1;
+                continue;
+            }
+        };
+
+        let inicio_rango = (fecha_base - chrono::Duration::days(1)).and_hms_opt(0, 0, 0).unwrap();
+        let fin_rango = (fecha_base + chrono::Duration::days(1)).and_hms_opt(23, 59, 59).unwrap();
+
+        match db::find_pago_for_verification(
+            &conn,
+            &usuario,
+            monto,
+            &inicio_rango.to_string(),
+            &fin_rango.to_string(),
+        ) {
+            Ok(Some(p)) => {
+                let obs = format!("Conciliado via Excel (fila {}).", fila_num);
+                let _ = db::mark_as_verificado(&conn, p.id, &obs);
+                resultados.push(ImportRowDetail {
+                    fila: fila_num,
+                    usuario,
+                    monto,
+                    fecha,
+                    resultado: "verificado".to_string(),
+                });
+                verificados += 1;
+            }
+            Ok(None) => {
+                resultados.push(ImportRowDetail {
+                    fila: fila_num,
+                    usuario,
+                    monto,
+                    fecha,
+                    resultado: "no_encontrado".to_string(),
+                });
+                no_encontrados += 1;
+            }
+            Err(e) => {
+                resultados.push(ImportRowDetail {
+                    fila: fila_num,
+                    usuario,
+                    monto,
+                    fecha,
+                    resultado: format!("error: {}", e),
+                });
+                errores += 1;
+            }
+        }
+    }
+
+    eprintln!("[XLSX] Importado: {} filas | {} verificados | {} no encontrados | {} errores",
+        resultados.len(), verificados, no_encontrados, errores);
+
+    Ok(ImportResult {
+        total_filas: resultados.len(),
+        verificados,
+        no_encontrados,
+        errores,
+        detalle: resultados,
+    })
+}
+
+/// Opens a native file dialog and imports the selected Excel file.
+#[tauri::command]
+fn pick_and_import_excel(
+    state: tauri::State<AppState>,
+) -> Result<ImportResult, String> {
+    let file = rfd::FileDialog::new()
+        .add_filter("Excel Files", &["xlsx", "xls"])
+        .pick_file();
+
+    let file_path = match file {
+        Some(p) => p.to_string_lossy().to_string(),
+        None => return Err("No se selecciono ningun archivo".to_string()),
+    };
+
+    import_excel(file_path, state)
+}
+
 fn main() {
     let db_conn = db::init_db().expect("Failed to initialize database");
 
     tauri::Builder::default()
+        .plugin(tauri_plugin_notification::init())
+        .setup(|app| {
+            // Background thread: sync IMAP every 5 minutes
+            let app_handle = app.handle().clone();
+            thread::spawn(move || {
+                // Give the app a moment to fully start before first sync
+                thread::sleep(Duration::from_secs(10));
+
+                loop {
+                    eprintln!("[BACKGROUND] Iniciando sync automatico IMAP...");
+                    let settings = settings::load_settings();
+
+                    if !settings.imap_user.is_empty() && !settings.imap_password.is_empty() {
+                        let db_path = db::get_db_path();
+                        match rusqlite::Connection::open(&db_path) {
+                            Ok(conn) => {
+                                if conn.busy_timeout(Duration::from_secs(5)).is_ok() {
+                                    match imap::sync_emails(
+                                        &settings.imap_user,
+                                        &settings.imap_password,
+                                        &conn,
+                                        &app_handle,
+                                    ) {
+                                        Ok(stats) => {
+                                            eprintln!(
+                                                "[BACKGROUND] Sync completado: {} nuevos, {} procesados",
+                                                stats.nuevos, stats.total_procesados
+                                            );
+                                            // Trigger desktop notification for new payments
+                                            if stats.nuevos > 0 {
+                                                let _ = app_handle
+                                                    .notification()
+                                                    .builder()
+                                                    .title("Binance Auditor")
+                                                    .body(&format!(
+                                                        "{} pago(s) nuevo(s) detectado(s) y guardado(s).",
+                                                        stats.nuevos
+                                                    ))
+                                                    .show();
+                                            }
+                                        }
+                                        Err(e) => {
+                                            eprintln!("[BACKGROUND] IMAP sync error: {}", e);
+                                        }
+                                    }
+                                } else {
+                                    eprintln!("[BACKGROUND] DB busy_timeout error");
+                                }
+                            }
+                            Err(e) => {
+                                eprintln!("[BACKGROUND] DB open error: {}", e);
+                            }
+                        }
+                    } else {
+                        eprintln!("[BACKGROUND] Credenciales IMAP no configuradas, saltando sync.");
+                    }
+
+                    // Sleep 5 minutes before next iteration
+                    thread::sleep(Duration::from_secs(5 * 60));
+                }
+            });
+
+            Ok(())
+        })
         .manage(AppState {
             db_conn: Mutex::new(db_conn),
         })
         .invoke_handler(tauri::generate_handler![
             sync_emails,
+            sync_historical,
             verify_payment,
             get_reports,
+            get_reports_by_sender,
             export_reports,
             import_csv,
+            import_excel,
+            pick_and_import_excel,
             save_settings,
             get_settings,
             debug_listar_pagos,

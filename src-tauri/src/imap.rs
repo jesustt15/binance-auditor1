@@ -191,6 +191,29 @@ pub fn sync_emails(
     conn: &Connection,
     app: &AppHandle,
 ) -> Result<SyncStats, String> {
+    sync_emails_internal(imap_user, imap_password, conn, app, None)
+}
+
+/// Historical sync: searches ALL emails (not just UNSEEN) since a given date.
+/// Uses BODY.PEEK so flags are NOT changed — old emails stay unread in Gmail.
+/// Dedup is handled by the DB check.
+pub fn sync_emails_historical(
+    imap_user: &str,
+    imap_password: &str,
+    conn: &Connection,
+    app: &AppHandle,
+    since_date: &str, // format: "01-Jan-2026"
+) -> Result<SyncStats, String> {
+    sync_emails_internal(imap_user, imap_password, conn, app, Some(since_date))
+}
+
+fn sync_emails_internal(
+    imap_user: &str,
+    imap_password: &str,
+    conn: &Connection,
+    app: &AppHandle,
+    historical_since: Option<&str>,
+) -> Result<SyncStats, String> {
     let ssl_conn = build_tls_connector()?;
     let client = connect_with_timeout(&ssl_conn)?;
 
@@ -202,9 +225,17 @@ pub fn sync_emails(
         .select("INBOX")
         .map_err(|e| format!("IMAP inbox error: {}", e))?;
 
-    let since_date = chrono::Utc::now() - chrono::Duration::days(FIRST_RUN_DAYS);
-    let since_str = since_date.format("%d-%b-%Y").to_string();
-    let search_query = format!("UNSEEN SUBJECT \"Binance\" SINCE {}", since_str);
+    // Build search query: UNSEEN for normal sync, no UNSEEN for historical
+    let since_date = historical_since.map(|s| s.to_string()).unwrap_or_else(|| {
+        let d = chrono::Utc::now() - chrono::Duration::days(FIRST_RUN_DAYS);
+        d.format("%d-%b-%Y").to_string()
+    });
+
+    let search_query = if historical_since.is_some() {
+        format!("SUBJECT \"Binance\" SINCE {}", since_date)
+    } else {
+        format!("UNSEEN SUBJECT \"Binance\" SINCE {}", since_date)
+    };
 
     eprintln!("[IMAP] Buscando: {}", search_query);
 
@@ -214,7 +245,7 @@ pub fn sync_emails(
         .into_iter()
         .collect();
 
-    eprintln!("[IMAP] Correos UNSEEN con 'Binance' desde {}: {}", since_str, uids.len());
+    eprintln!("[IMAP] Correos encontrados con 'Binance' desde {}: {}", since_date, uids.len());
 
     let mut sorted_uids = uids;
     sorted_uids.sort();
@@ -272,9 +303,13 @@ pub fn sync_emails(
             actual += 1;
         }
 
-        session
-            .uid_store(&uid_set, "+FLAGS (\\Seen)")
-            .map_err(|e| format!("IMAP flags error: {}", e))?;
+        // Only mark as SEEN for normal (non-historical) sync
+        // Historical sync uses PEEK and leaves flags untouched
+        if historical_since.is_none() {
+            session
+                .uid_store(&uid_set, "+FLAGS (\\Seen)")
+                .map_err(|e| format!("IMAP flags error: {}", e))?;
+        }
 
         let _ = app.emit("sync-progress", SyncProgress { actual, total, nuevos });
         eprintln!("[IMAP] Progreso: {}/{} (nuevos: {}, duplicados: {})", actual, total, nuevos, duplicados);

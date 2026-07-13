@@ -6,6 +6,7 @@ import ReportTable from '../components/ReportTable'
 export default function Reports() {
   const [desde, setDesde] = useState('')
   const [hasta, setHasta] = useState('')
+  const [remitente, setRemitente] = useState('')
   const [pagos, setPagos] = useState<PagoBinance[]>([])
   const [loading, setLoading] = useState(false)
   const [exportando, setExportando] = useState(false)
@@ -18,10 +19,12 @@ export default function Reports() {
     setError(null)
     setExportMsg(null)
     try {
-      const result = await invoke<PagoBinance[]>('get_reports', {
-        desde,
-        hasta,
-      })
+      const result = await invoke<PagoBinance[]>(
+        remitente.trim() ? 'get_reports_by_sender' : 'get_reports',
+        remitente.trim()
+          ? { desde, hasta, remitente: remitente.trim() }
+          : { desde, hasta },
+      )
       setPagos(result)
     } catch (err: any) {
       setError(err)
@@ -72,6 +75,16 @@ export default function Reports() {
               value={hasta}
               onChange={(e) => setHasta(e.target.value)}
               className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-amber-500"
+            />
+          </div>
+          <div className="flex-1 min-w-[180px]">
+            <label className="block text-xs font-medium text-slate-400 mb-1">Filtrar por remitente</label>
+            <input
+              type="text"
+              value={remitente}
+              onChange={(e) => setRemitente(e.target.value)}
+              placeholder="Nombre o email..."
+              className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-amber-500 placeholder:text-slate-600"
             />
           </div>
           <button

@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
 import { invoke } from '@tauri-apps/api/core'
 import SyncButton from '../components/SyncButton'
 import VerificationForm from '../components/VerificationForm'
@@ -10,15 +10,22 @@ export default function Dashboard() {
   const [loadingBD, setLoadingBD] = useState(false)
   const [desdeBD, setDesdeBD] = useState('')
   const [hastaBD, setHastaBD] = useState('')
+  const [paginaBD, setPaginaBD] = useState(1)
+  const [porPaginaBD, setPorPaginaBD] = useState(20)
 
-  // CSV import state
-  const [csvImportando, setCsvImportando] = useState(false)
-  const [csvResultado, setCsvResultado] = useState<ImportResult | null>(null)
-  const [csvError, setCsvError] = useState<string | null>(null)
+  // CSV/Excel import state
+  const [importando, setImportando] = useState(false)
+  const [importResultado, setImportResultado] = useState<ImportResult | null>(null)
+  const [importError, setImportError] = useState<string | null>(null)
+
+  // Historical sync state
+  const [histFecha, setHistFecha] = useState('')
+  const [histSyncing, setHistSyncing] = useState(false)
+  const [histResultado, setHistResultado] = useState<string | null>(null)
+  const [histError, setHistError] = useState<string | null>(null)
 
   const copiarPagos = () => {
     if (!pagosBD || pagosBD.length === 0) return
-    // Extraer solo la fecha YYYY-MM-DD del RFC3339
     const toISODate = (rfc: string) => rfc.slice(0, 10)
     const csv = [
       'usuario,monto,fecha',
@@ -29,6 +36,7 @@ export default function Dashboard() {
 
   const listarPagos = async () => {
     setLoadingBD(true)
+    setPaginaBD(1)
     try {
       const args: Record<string, unknown> = {}
       if (desdeBD && hastaBD) {
@@ -44,24 +52,74 @@ export default function Dashboard() {
     }
   }
 
-  const manejarArchivoCSV = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  const totalPaginasBD = useMemo(() => pagosBD ? Math.ceil(pagosBD.length / porPaginaBD) : 0, [pagosBD, porPaginaBD])
+
+  const pagosPaginados = useMemo(() => {
+    if (!pagosBD) return []
+    const inicio = (paginaBD - 1) * porPaginaBD
+    return pagosBD.slice(inicio, inicio + porPaginaBD)
+  }, [pagosBD, paginaBD, porPaginaBD])
+
+  const manejarArchivo = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     if (!file) return
 
-    setCsvImportando(true)
-    setCsvResultado(null)
-    setCsvError(null)
+    const isExcel = file.name.endsWith('.xlsx') || file.name.endsWith('.xls')
 
+    if (isExcel) {
+      setImportando(true)
+      setImportResultado(null)
+      setImportError(null)
+      try {
+        const result = await invoke<ImportResult>('pick_and_import_excel')
+        setImportResultado(result)
+      } catch (err: any) {
+        if (err !== 'No se selecciono ningun archivo') {
+          setImportError(`Error al procesar Excel: ${err}`)
+        }
+      } finally {
+        setImportando(false)
+        e.target.value = ''
+      }
+    } else {
+      setImportando(true)
+      setImportResultado(null)
+      setImportError(null)
+      try {
+        const contenido = await file.text()
+        const result = await invoke<ImportResult>('import_csv', { contenido })
+        setImportResultado(result)
+      } catch (err: any) {
+        setImportError(`Error al procesar CSV: ${err}`)
+      } finally {
+        setImportando(false)
+        e.target.value = ''
+      }
+    }
+  }
+
+  const syncHistorico = async () => {
+    if (!histFecha) return
+    setHistSyncing(true)
+    setHistResultado(null)
+    setHistError(null)
     try {
-      const contenido = await file.text()
-      const result = await invoke<ImportResult>('import_csv', { contenido })
-      setCsvResultado(result)
+      const result = await invoke<{ success: boolean; mensajes_nuevos: number; total_procesados: number; error?: string }>(
+        'sync_historical',
+        { sinceDate: histFecha },
+      )
+      if (result.success) {
+        setHistResultado(
+          `Sync completado: ${result.mensajes_nuevos} pago(s) nuevo(s) de ${result.total_procesados} correos procesados.`,
+        )
+        if (pagosBD) listarPagos()
+      } else {
+        setHistError(result.error || 'Error desconocido en sync historico.')
+      }
     } catch (err: any) {
-      setCsvError(`Error al procesar CSV: ${err}`)
+      setHistError(`Error en sync historico: ${err}`)
     } finally {
-      setCsvImportando(false)
-      // Reset input so the same file can be re-selected
-      e.target.value = ''
+      setHistSyncing(false)
     }
   }
 
@@ -75,63 +133,96 @@ export default function Dashboard() {
         <SyncButton onSyncComplete={() => {}} />
       </div>
 
+      {/* Historical Sync Section */}
+      <div className="mb-8 bg-slate-800 p-6 rounded-xl border border-slate-700">
+        <h2 className="text-lg font-semibold mb-2 text-amber-400">Sincronizacion Historica</h2>
+        <p className="text-xs text-slate-500 mb-4">
+          Busca TODOS los correos de Binance (no solo los no leidos) desde la fecha indicada.
+          Los correos no se marcan como leidos. Los duplicados se saltan automaticamente.
+        </p>
+        <div className="flex gap-3 items-end">
+          <div className="flex-1 min-w-[180px]">
+            <label className="block text-xs font-medium text-slate-400 mb-1">Buscar desde</label>
+            <input
+              type="date"
+              value={histFecha}
+              onChange={(e) => setHistFecha(e.target.value)}
+              className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-amber-500"
+            />
+          </div>
+          <button
+            onClick={syncHistorico}
+            disabled={histSyncing || !histFecha}
+            className="bg-purple-600 hover:bg-purple-700 disabled:bg-slate-700 disabled:cursor-not-allowed text-white font-medium px-6 py-2 rounded-lg text-sm transition-colors"
+          >
+            {histSyncing ? 'Sincronizando...' : 'Sincronizar Historico'}
+          </button>
+        </div>
+        {histResultado && (
+          <p className="mt-3 text-sm font-medium text-emerald-400">{histResultado}</p>
+        )}
+        {histError && (
+          <p className="mt-3 text-sm text-rose-400">{histError}</p>
+        )}
+      </div>
+
       <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
         <VerificationForm />
 
-        {/* CSV Import masivo */}
+        {/* CSV/Excel Import masivo */}
         <div className="bg-slate-800 p-6 rounded-xl border border-slate-700">
-          <h2 className="text-lg font-semibold mb-4 text-slate-300">Carga Masiva de Reportes (CSV)</h2>
+          <h2 className="text-lg font-semibold mb-4 text-slate-300">Carga Masiva de Reportes</h2>
           <p className="text-xs text-slate-500 mb-4">
-            Subi un archivo CSV con columnas: <span className="text-slate-400 font-mono">usuario, monto, fecha</span>.
+            Subi un archivo <span className="text-slate-400 font-mono">.csv</span> o <span className="text-slate-400 font-mono">.xlsx</span> con columnas: <span className="text-slate-400 font-mono">usuario, monto, fecha</span>.
             Cada fila se verificara automaticamente contra los correos sincronizados.
           </p>
 
           <label className="block w-full cursor-pointer bg-slate-900 border-2 border-dashed border-slate-700 hover:border-amber-600/50 rounded-lg p-6 text-center transition-colors">
             <input
               type="file"
-              accept=".csv"
-              onChange={manejarArchivoCSV}
-              disabled={csvImportando}
+              accept=".csv,.xlsx,.xls"
+              onChange={manejarArchivo}
+              disabled={importando}
               className="hidden"
             />
-            {csvImportando ? (
+            {importando ? (
               <p className="text-amber-400 text-sm font-medium">Procesando archivo...</p>
             ) : (
               <>
-                <p className="text-slate-400 text-sm font-medium">Click para seleccionar archivo CSV</p>
-                <p className="text-slate-600 text-xs mt-1">o arrastra el archivo aqui</p>
+                <p className="text-slate-400 text-sm font-medium">Click para seleccionar archivo CSV o Excel</p>
+                <p className="text-slate-600 text-xs mt-1">.csv, .xlsx, .xls</p>
               </>
             )}
           </label>
 
-          {csvError && (
-            <p className="mt-3 text-sm text-rose-400">{csvError}</p>
+          {importError && (
+            <p className="mt-3 text-sm text-rose-400">{importError}</p>
           )}
 
-          {csvResultado && (
+          {importResultado && (
             <div className="mt-4">
               {/* Summary cards */}
               <div className="grid grid-cols-4 gap-2 mb-4">
                 <div className="bg-slate-900 rounded-lg p-3 text-center">
                   <p className="text-xs text-slate-500">Total</p>
-                  <p className="text-lg font-bold text-slate-300">{csvResultado.total_filas}</p>
+                  <p className="text-lg font-bold text-slate-300">{importResultado.total_filas}</p>
                 </div>
                 <div className="bg-emerald-950/50 rounded-lg p-3 text-center">
                   <p className="text-xs text-emerald-500">Verificados</p>
-                  <p className="text-lg font-bold text-emerald-400">{csvResultado.verificados}</p>
+                  <p className="text-lg font-bold text-emerald-400">{importResultado.verificados}</p>
                 </div>
                 <div className="bg-amber-950/50 rounded-lg p-3 text-center">
                   <p className="text-xs text-amber-500">No Encontrados</p>
-                  <p className="text-lg font-bold text-amber-400">{csvResultado.no_encontrados}</p>
+                  <p className="text-lg font-bold text-amber-400">{importResultado.no_encontrados}</p>
                 </div>
                 <div className="bg-rose-950/50 rounded-lg p-3 text-center">
                   <p className="text-xs text-rose-500">Errores</p>
-                  <p className="text-lg font-bold text-rose-400">{csvResultado.errores}</p>
+                  <p className="text-lg font-bold text-rose-400">{importResultado.errores}</p>
                 </div>
               </div>
 
               {/* Detail table */}
-              {csvResultado.detalle.length > 0 && (
+              {importResultado.detalle.length > 0 && (
                 <div className="max-h-64 overflow-y-auto">
                   <table className="w-full text-xs text-left">
                     <thead className="text-slate-500 border-b border-slate-700 sticky top-0 bg-slate-800">
@@ -144,7 +235,7 @@ export default function Dashboard() {
                       </tr>
                     </thead>
                     <tbody>
-                      {csvResultado.detalle.map((row) => (
+                      {importResultado.detalle.map((row) => (
                         <tr key={row.fila} className="border-b border-slate-800/50">
                           <td className="py-1 pr-2 text-slate-600">{row.fila}</td>
                           <td className="py-1 pr-2 text-slate-400">{row.usuario}</td>
@@ -232,7 +323,7 @@ export default function Dashboard() {
                   </tr>
                 </thead>
                 <tbody>
-                  {pagosBD.map((p) => (
+                  {pagosPaginados.map((p) => (
                     <tr key={p.id} className="border-b border-slate-800 hover:bg-slate-800/50">
                       <td className="py-2 pr-4 text-slate-500">{p.id}</td>
                       <td className="py-2 pr-4 font-mono text-slate-300">{p.usuario_remitente}</td>
@@ -250,6 +341,44 @@ export default function Dashboard() {
                   ))}
                 </tbody>
               </table>
+
+              <div className="flex items-center justify-between mt-4 pt-4 border-t border-slate-700">
+                <div className="flex items-center gap-2 text-xs text-slate-400">
+                  <span>Mostrar</span>
+                  <select
+                    value={porPaginaBD}
+                    onChange={(e) => { setPorPaginaBD(Number(e.target.value)); setPaginaBD(1) }}
+                    className="bg-slate-900 border border-slate-700 rounded px-2 py-1 text-xs focus:outline-none focus:border-amber-500"
+                  >
+                    <option value={10}>10</option>
+                    <option value={20}>20</option>
+                    <option value={50}>50</option>
+                    <option value={100}>100</option>
+                  </select>
+                  <span>de {pagosBD.length}</span>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => setPaginaBD(p => Math.max(1, p - 1))}
+                    disabled={paginaBD === 1}
+                    className="px-3 py-1 text-xs rounded bg-slate-800 border border-slate-700 text-slate-300 disabled:opacity-40 disabled:cursor-not-allowed hover:bg-slate-700 transition-colors"
+                  >
+                    Anterior
+                  </button>
+                  <span className="text-xs text-slate-400 min-w-[80px] text-center">
+                    {paginaBD} / {totalPaginasBD}
+                  </span>
+                  <button
+                    onClick={() => setPaginaBD(p => Math.min(totalPaginasBD, p + 1))}
+                    disabled={paginaBD === totalPaginasBD}
+                    className="px-3 py-1 text-xs rounded bg-slate-800 border border-slate-700 text-slate-300 disabled:opacity-40 disabled:cursor-not-allowed hover:bg-slate-700 transition-colors"
+                  >
+                    Siguiente
+                  </button>
+                </div>
+              </div>
+
               <p className="mt-4 text-xs text-slate-500">
                 Total: {pagosBD.length} pagos | Disponibles: {pagosBD.filter(p => p.estado === 'disponible').length} | Verificados: {pagosBD.filter(p => p.estado === 'verificado').length}
               </p>
