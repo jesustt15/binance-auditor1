@@ -141,7 +141,7 @@ export default function Dashboard() {
     <div className="max-w-4xl mx-auto">
       <div className="flex justify-between items-center mb-8 border-b border-slate-800 pb-4">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight">Binance Pay Auditor v1.0</h1>
+          <h1 className="text-2xl font-bold tracking-tight">Binance Pay Auditor v1.2</h1>
           <p className="text-slate-400 text-sm">Conciliacion de pagos</p>
         </div>
         <SyncButton onSyncComplete={() => {}} />
@@ -161,7 +161,7 @@ export default function Dashboard() {
               type="date"
               value={histFecha}
               onChange={(e) => setHistFecha(e.target.value)}
-              className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-amber-500"
+              className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm text-slate-300 focus:outline-none focus:border-amber-500"
             />
           </div>
           <button
@@ -289,7 +289,7 @@ export default function Dashboard() {
                 type="date"
                 value={desdeBD}
                 onChange={(e) => setDesdeBD(e.target.value)}
-                className="bg-slate-900 border border-slate-700 rounded px-2 py-1 text-xs w-32 focus:outline-none focus:border-amber-500"
+                className="bg-slate-900 border border-slate-700 rounded px-2 py-1 text-xs text-slate-300 w-32 focus:outline-none focus:border-amber-500"
               />
             </div>
             <div>
@@ -298,7 +298,7 @@ export default function Dashboard() {
                 type="date"
                 value={hastaBD}
                 onChange={(e) => setHastaBD(e.target.value)}
-                className="bg-slate-900 border border-slate-700 rounded px-2 py-1 text-xs w-32 focus:outline-none focus:border-amber-500"
+                className="bg-slate-900 border border-slate-700 rounded px-2 py-1 text-xs text-slate-300 w-32 focus:outline-none focus:border-amber-500"
               />
             </div>
             <div>
