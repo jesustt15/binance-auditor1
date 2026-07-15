@@ -65,7 +65,25 @@ fn html_to_text(html: &str) -> String {
         }
     }
 
-    result
+    // Decode common HTML entities so text is readable for matching
+    let decoded = result
+        .replace("&oacute;", "ó")
+        .replace("&aacute;", "á")
+        .replace("&eacute;", "é")
+        .replace("&iacute;", "í")
+        .replace("&uacute;", "ú")
+        .replace("&ntilde;", "ñ")
+        .replace("&Ntilde;", "Ñ")
+        .replace("&nbsp;", " ")
+        .replace("&amp;", "&")
+        .replace("&copy;", "©")
+        .replace("&iexcl;", "¡")
+        .replace("&iquest;", "¿")
+        .replace("&quot;", "\"")
+        .replace("&lt;", "<")
+        .replace("&gt;", ">");
+
+    decoded
         .lines()
         .map(|line| line.trim())
         .filter(|line| !line.is_empty())
@@ -84,7 +102,69 @@ fn subject_matches_deposit(subject: &str) -> bool {
         || lower.contains("deposit completed")
 }
 
+/// Extract deposit data from "Depósito completado" emails.
+///
+/// These emails have a completely different format from payment emails:
+/// - NO label/value pairs (no "Time:", "Amount:", etc.)
+/// - Amount is embedded in a sentence: "Tu depósito por valor de 785.14 USDT..."
+/// - Date is in the SUBJECT, not the body: "...- 2026-07-15 18:50:21 (UTC)"
+/// - No sender/remitente field
+fn extract_deposit_data(text: &str, subject: &str) -> Option<BinanceEmailData> {
+    let plain_text = if text.contains('<') {
+        html_to_text(text)
+    } else {
+        text.to_string()
+    };
+
+    let mut monto: Option<f64> = None;
+    let mut moneda: Option<String> = None;
+
+    // Extract monto + moneda from "por valor de X.YY CCURR"
+    let lower = plain_text.to_lowercase();
+    if let Some(pos) = lower.find("por valor de") {
+        let after = plain_text[pos + "por valor de".len()..].trim();
+        let parts: Vec<&str> = after.split_whitespace().collect();
+        if parts.len() >= 2 {
+            if let Ok(amt) = parts[0].parse::<f64>() {
+                monto = Some(amt);
+                moneda = Some(parts[1].to_uppercase());
+            }
+        }
+    }
+
+    // Extract fecha from subject: "...- 2026-07-15 18:50:21 (UTC)"
+    let mut fecha: Option<String> = None;
+    if let Some(dash_pos) = subject.rfind(" - ") {
+        let date_part = subject[dash_pos + 3..].trim();
+        let cleaned = date_part.replace("(UTC)", "").trim().to_string();
+        if let Ok(naive) = chrono::NaiveDateTime::parse_from_str(&cleaned, "%Y-%m-%d %H:%M:%S") {
+            let dt = chrono::DateTime::<chrono::Utc>::from_naive_utc_and_offset(naive, chrono::Utc);
+            fecha = Some(dt.to_rfc3339());
+        }
+    }
+
+    let result = match (monto, moneda.clone(), fecha.clone()) {
+        (Some(m), Some(c), Some(f)) => Some(BinanceEmailData {
+            usuario: None,
+            monto: m,
+            moneda: c,
+            fecha: f,
+            tipo: "deposito".to_string(),
+        }),
+        _ => {
+            eprintln!("[IMAP] Depósito NO detectado: monto={:?} moneda={:?} fecha={:?}", monto, moneda, fecha);
+            None
+        }
+    };
+    result
+}
+
 fn extract_binance_data(text: &str, subject: &str) -> Option<BinanceEmailData> {
+    // Route to deposit parser if subject matches a deposit email
+    if subject_matches_deposit(subject) {
+        return extract_deposit_data(text, subject);
+    }
+
     let plain_text = if text.contains('<') {
         html_to_text(text)
     } else {
@@ -246,22 +326,39 @@ fn sync_emails_internal(
         d.format("%d-%b-%Y").to_string()
     });
 
-    let deposit_subjects = r#"OR OR SUBJECT "Deposito Completado" SUBJECT "Depósito Completado" SUBJECT "Deposit Completed""#;
-    let search_query = if historical_since.is_some() {
-        format!("OR SUBJECT \"Binance\" {} SINCE {}", deposit_subjects, since_date)
-    } else {
-        format!("UNSEEN OR SUBJECT \"Binance\" {} SINCE {}", deposit_subjects, since_date)
-    };
+    // Do separate searches and merge UIDs — avoids OR syntax issues and
+    // non-ASCII problems with accented characters in IMAP SEARCH.
+    let subject_queries: Vec<&str> = vec![
+        "Binance",
+        "Deposito Completado",
+        "Deposit Completed",
+    ];
 
-    eprintln!("[IMAP] Buscando: {}", search_query);
+    let mut uid_set: std::collections::BTreeSet<u32> = std::collections::BTreeSet::new();
 
-    let uids: Vec<u32> = session
-        .uid_search(&search_query)
-        .map_err(|e| format!("IMAP search error: {}", e))?
-        .into_iter()
-        .collect();
+    for subj in &subject_queries {
+        let query = if historical_since.is_some() {
+            format!("SUBJECT \"{}\" SINCE {}", subj, since_date)
+        } else {
+            format!("UNSEEN SUBJECT \"{}\" SINCE {}", subj, since_date)
+        };
 
-    eprintln!("[IMAP] Correos encontrados con 'Binance' desde {}: {}", since_date, uids.len());
+        eprintln!("[IMAP] Buscando: {}", query);
+
+        match session.uid_search(&query) {
+            Ok(found) => {
+                eprintln!("[IMAP] Subject \"{}\": {} correo(s)", subj, found.len());
+                uid_set.extend(found);
+            }
+            Err(e) => {
+                eprintln!("[IMAP] Error buscando \"{}\": {} — saltando", subj, e);
+            }
+        }
+    }
+
+    let uids: Vec<u32> = uid_set.into_iter().collect();
+
+    eprintln!("[IMAP] Total unique UIDs desde {}: {}", since_date, uids.len());
 
     let mut sorted_uids = uids;
     sorted_uids.sort();
@@ -381,11 +478,11 @@ fn get_text_body_recursive(parsed: &mailparse::ParsedMail, depth: usize) -> Stri
 mod tests {
     use super::*;
 
-    // Task 4.1: Parser with deposit body (no sender)
+    // Deposit parser: "por valor de X.YY CCURR" in body, date in subject
     #[test]
     fn extract_deposito_body_no_sender() {
-        let body = "Amount:\n100.00 USDT\nTime:\n2026-07-15 10:30:00\n";
-        let subject = "Deposito Completado";
+        let body = "Tu depósito por valor de 100.00 USDT está ya disponible en tu cuenta de Binance.";
+        let subject = "[Binance] USDT Depósito completado - 2026-07-15 10:30:00 (UTC)";
         let result = extract_binance_data(body, subject).unwrap();
         assert_eq!(result.tipo, "deposito");
         assert_eq!(result.usuario, None);
@@ -394,11 +491,11 @@ mod tests {
         assert!(!result.fecha.is_empty());
     }
 
-    // Task 4.1: Deposit without accent
+    // Deposit without accent in subject
     #[test]
     fn extract_deposito_sin_acento() {
-        let body = "Monto:\n200.00 USDC\nHora:\n2026-07-15 14:00:00\n";
-        let subject = "Deposito Completado";
+        let body = "Tu deposito por valor de 200.00 USDC está ya disponible en tu cuenta de Binance.";
+        let subject = "[Binance] USDC Deposito completado - 2026-07-15 14:00:00 (UTC)";
         let result = extract_binance_data(body, subject).unwrap();
         assert_eq!(result.tipo, "deposito");
         assert_eq!(result.usuario, None);
@@ -454,13 +551,15 @@ mod tests {
         assert!(subject_matches_deposit("deposit completed"));
     }
 
-    // Deposit with Spanish "De:" label (sender present) still gets deposit tipo from subject
+    // Deposit with large decimal amount
     #[test]
     fn extract_deposito_with_sender_label_still_deposito() {
-        let body = "De:\nremitente@test.com\nMonto:\n150.00 USDT\nFecha:\n2026-07-15 16:00:00\n";
-        let subject = "Depósito Completado";
+        let body = "Tu depósito por valor de 785.14 USDT está ya disponible en tu cuenta de Binance.";
+        let subject = "[Binance] USDT Depósito completado - 2026-07-15 18:50:21 (UTC)";
         let result = extract_binance_data(body, subject).unwrap();
         assert_eq!(result.tipo, "deposito");
-        assert_eq!(result.usuario.as_deref(), Some("remitente@test.com"));
+        assert_eq!(result.usuario, None);
+        assert_eq!(result.monto, 785.14);
+        assert_eq!(result.moneda, "USDT");
     }
 }
