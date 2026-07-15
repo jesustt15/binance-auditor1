@@ -100,11 +100,11 @@ fn verify_payment(
         inicio_rango, fin_rango);
 
     // Log ALL payments in range for diagnostics
-    if let Ok(todos) = db::get_reports(&conn, &inicio_rango.to_string(), &fin_rango.to_string()) {
+    if let Ok(todos) = db::get_reports(&conn, &inicio_rango.to_string(), &fin_rango.to_string(), None, None, None) {
         eprintln!("[VERIFY DEBUG] Pagos en BD dentro del rango: {} encontrados", todos.len());
         for p in &todos {
-            eprintln!("[VERIFY DEBUG]   DB: id={} usuario='{}' monto={} moneda='{}' fecha='{}' estado='{}'",
-                p.id, p.usuario_remitente, p.monto, p.moneda, p.fecha_correo, p.estado);
+            eprintln!("[VERIFY DEBUG]   DB: id={} tipo='{}' usuario='{}' monto={} moneda='{}' fecha='{}' estado='{}'",
+                p.id, p.tipo, p.usuario_remitente.as_deref().unwrap_or("N/A"), p.monto, p.moneda, p.fecha_correo, p.estado);
         }
     }
 
@@ -118,8 +118,17 @@ fn verify_payment(
 
     match pago {
         Some(p) => {
-            eprintln!("[VERIFY DEBUG] MATCH encontrado: id={} usuario='{}' monto={}",
-                p.id, p.usuario_remitente, p.monto);
+            // Guard: skip deposits — they have no sender to match
+            if p.tipo == "deposito" {
+                return Ok(VerifyResult {
+                    verificado: false,
+                    mensaje: "Los depositos no pueden ser verificados automaticamente porque no tienen remitente.".to_string(),
+                    data: None,
+                });
+            }
+
+            eprintln!("[VERIFY DEBUG] MATCH encontrado: id={} tipo='{}' usuario='{}' monto={}",
+                p.id, p.tipo, p.usuario_remitente.as_deref().unwrap_or("N/A"), p.monto);
             let obs = "Conciliado automaticamente con reporte de empresa.".to_string();
             db::mark_as_verificado(&conn, p.id, &obs)
                 .map_err(|e| format!("DB update error: {}", e))?;
@@ -152,6 +161,9 @@ fn verify_payment(
 fn get_reports(
     desde: String,
     hasta: String,
+    monto_exacto: Option<f64>,
+    monto_min: Option<f64>,
+    monto_max: Option<f64>,
     state: tauri::State<AppState>,
 ) -> Result<Vec<PagoBinance>, String> {
     let conn = state.db_conn.lock().map_err(|e| e.to_string())?;
@@ -159,7 +171,7 @@ fn get_reports(
     let inicio = format!("{}T00:00:00", desde);
     let fin = format!("{}T23:59:59", hasta);
 
-    db::get_reports(&conn, &inicio, &fin)
+    db::get_reports(&conn, &inicio, &fin, monto_exacto, monto_min, monto_max)
         .map_err(|e| format!("DB error: {}", e))
 }
 
@@ -168,6 +180,9 @@ fn get_reports_by_sender(
     desde: String,
     hasta: String,
     remitente: String,
+    monto_exacto: Option<f64>,
+    monto_min: Option<f64>,
+    monto_max: Option<f64>,
     state: tauri::State<AppState>,
 ) -> Result<Vec<PagoBinance>, String> {
     let conn = state.db_conn.lock().map_err(|e| e.to_string())?;
@@ -175,7 +190,7 @@ fn get_reports_by_sender(
     let inicio = format!("{}T00:00:00", desde);
     let fin = format!("{}T23:59:59", hasta);
 
-    db::get_reports_by_sender(&conn, &inicio, &fin, &remitente)
+    db::get_reports_by_sender(&conn, &inicio, &fin, &remitente, monto_exacto, monto_min, monto_max)
         .map_err(|e| format!("DB error: {}", e))
 }
 
@@ -190,6 +205,9 @@ struct ExportResult {
 fn export_reports(
     desde: String,
     hasta: String,
+    monto_exacto: Option<f64>,
+    monto_min: Option<f64>,
+    monto_max: Option<f64>,
     state: tauri::State<AppState>,
 ) -> Result<ExportResult, String> {
     let conn = state.db_conn.lock().map_err(|e| e.to_string())?;
@@ -197,7 +215,7 @@ fn export_reports(
     let inicio = format!("{}T00:00:00", desde);
     let fin = format!("{}T23:59:59", hasta);
 
-    let pagos = db::get_reports(&conn, &inicio, &fin)
+    let pagos = db::get_reports(&conn, &inicio, &fin, monto_exacto, monto_min, monto_max)
         .map_err(|e| format!("DB error: {}", e))?;
 
     if pagos.is_empty() {
@@ -228,6 +246,9 @@ fn export_reports(
 fn debug_listar_pagos(
     desde: Option<String>,
     hasta: Option<String>,
+    monto_exacto: Option<f64>,
+    monto_min: Option<f64>,
+    monto_max: Option<f64>,
     state: tauri::State<AppState>,
 ) -> Result<Vec<PagoBinance>, String> {
     let conn = state.db_conn.lock().map_err(|e| e.to_string())?;
@@ -237,7 +258,7 @@ fn debug_listar_pagos(
             let inicio = format!("{}T00:00:00", d);
             let fin = format!("{}T23:59:59", h);
             eprintln!("[DEBUG] Listando pagos en rango: {} a {}", inicio, fin);
-            db::get_reports(&conn, &inicio, &fin).map_err(|e| format!("DB error: {}", e))?
+            db::get_reports(&conn, &inicio, &fin, monto_exacto, monto_min, monto_max).map_err(|e| format!("DB error: {}", e))?
         }
         _ => {
             eprintln!("[DEBUG] Listando TODOS los pagos en BD...");
@@ -247,8 +268,8 @@ fn debug_listar_pagos(
 
     eprintln!("[DEBUG] Total pagos: {}", pagos.len());
     for p in &pagos {
-        eprintln!("[DEBUG]   id={} usuario='{}' monto={} moneda='{}' fecha='{}' estado='{}'",
-            p.id, p.usuario_remitente, p.monto, p.moneda, p.fecha_correo, p.estado);
+        eprintln!("[DEBUG]   id={} tipo='{}' usuario='{}' monto={} moneda='{}' fecha='{}' estado='{}'",
+            p.id, p.tipo, p.usuario_remitente.as_deref().unwrap_or("N/A"), p.monto, p.moneda, p.fecha_correo, p.estado);
     }
     Ok(pagos)
 }

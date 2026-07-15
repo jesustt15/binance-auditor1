@@ -1,10 +1,11 @@
 export interface PagoBinance {
   id: number
-  usuario_remitente: string
+  tipo: 'pago' | 'deposito'
+  usuario_remitente: string | null
   monto: number
   moneda: string
   fecha_correo: string
-  estado: 'disponible' | 'verificado'
+  estado: 'disponible' | 'verificado' | 'por_revisar'
   observaciones: string | null
   verificado_en: string | null
   creado_en: string

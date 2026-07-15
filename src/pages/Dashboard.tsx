@@ -10,6 +10,9 @@ export default function Dashboard() {
   const [loadingBD, setLoadingBD] = useState(false)
   const [desdeBD, setDesdeBD] = useState('')
   const [hastaBD, setHastaBD] = useState('')
+  const [montoExactoBD, setMontoExactoBD] = useState('')
+  const [montoMinBD, setMontoMinBD] = useState('')
+  const [montoMaxBD, setMontoMaxBD] = useState('')
   const [paginaBD, setPaginaBD] = useState(1)
   const [porPaginaBD, setPorPaginaBD] = useState(20)
 
@@ -29,9 +32,17 @@ export default function Dashboard() {
     const toISODate = (rfc: string) => rfc.slice(0, 10)
     const csv = [
       'usuario,monto,fecha',
-      ...pagosBD.map(p => `${p.usuario_remitente},${p.monto},${toISODate(p.fecha_correo)}`),
+      ...pagosBD.map(p => `${p.usuario_remitente ?? '—'},${p.monto},${toISODate(p.fecha_correo)}`),
     ].join('\n')
     navigator.clipboard.writeText(csv)
+  }
+
+  const limpiarFiltros = () => {
+    setDesdeBD('')
+    setHastaBD('')
+    setMontoExactoBD('')
+    setMontoMinBD('')
+    setMontoMaxBD('')
   }
 
   const listarPagos = async () => {
@@ -43,6 +54,9 @@ export default function Dashboard() {
         args.desde = desdeBD
         args.hasta = hastaBD
       }
+      if (montoExactoBD) args.montoExacto = parseFloat(montoExactoBD)
+      if (montoMinBD) args.montoMin = parseFloat(montoMinBD)
+      if (montoMaxBD) args.montoMax = parseFloat(montoMaxBD)
       const pagos = await invoke<PagoBinance[]>('debug_listar_pagos', args)
       setPagosBD(pagos)
     } catch (err) {
@@ -287,6 +301,39 @@ export default function Dashboard() {
                 className="bg-slate-900 border border-slate-700 rounded px-2 py-1 text-xs w-32 focus:outline-none focus:border-amber-500"
               />
             </div>
+            <div>
+              <label className="block text-[10px] font-medium text-slate-500 mb-0.5">Monto</label>
+              <input
+                type="number"
+                step="0.01"
+                placeholder="Exacto"
+                value={montoExactoBD}
+                onChange={(e) => setMontoExactoBD(e.target.value)}
+                className="bg-slate-900 border border-slate-700 rounded px-2 py-1 text-xs w-20 focus:outline-none focus:border-amber-500"
+              />
+            </div>
+            <div>
+              <label className="block text-[10px] font-medium text-slate-500 mb-0.5">Min</label>
+              <input
+                type="number"
+                step="0.01"
+                placeholder="Min"
+                value={montoMinBD}
+                onChange={(e) => setMontoMinBD(e.target.value)}
+                className="bg-slate-900 border border-slate-700 rounded px-2 py-1 text-xs w-20 focus:outline-none focus:border-amber-500"
+              />
+            </div>
+            <div>
+              <label className="block text-[10px] font-medium text-slate-500 mb-0.5">Max</label>
+              <input
+                type="number"
+                step="0.01"
+                placeholder="Max"
+                value={montoMaxBD}
+                onChange={(e) => setMontoMaxBD(e.target.value)}
+                className="bg-slate-900 border border-slate-700 rounded px-2 py-1 text-xs w-20 focus:outline-none focus:border-amber-500"
+              />
+            </div>
             <button
               onClick={listarPagos}
               disabled={loadingBD}
@@ -294,6 +341,15 @@ export default function Dashboard() {
             >
               {loadingBD ? 'Cargando...' : (desdeBD && hastaBD ? 'Filtrar' : 'Listar Todos')}
             </button>
+            {(desdeBD || hastaBD || montoExactoBD || montoMinBD || montoMaxBD) && (
+              <button
+                onClick={limpiarFiltros}
+                className="px-4 py-1.5 bg-slate-700 hover:bg-slate-600 text-slate-300 rounded text-xs font-medium transition-colors"
+                title="Limpiar todos los filtros"
+              >
+                Limpiar filtros
+              </button>
+            )}
             {pagosBD && pagosBD.length > 0 && (
               <button
                 onClick={copiarPagos}
@@ -314,25 +370,35 @@ export default function Dashboard() {
               <table className="w-full text-xs text-left">
                 <thead className="text-slate-400 border-b border-slate-700">
                   <tr>
-                    <th className="pb-2 pr-4">ID</th>
-                    <th className="pb-2 pr-4">Usuario</th>
-                    <th className="pb-2 pr-4">Monto</th>
-                    <th className="pb-2 pr-4">Moneda</th>
-                    <th className="pb-2 pr-4">Fecha Correo</th>
-                    <th className="pb-2 pr-4">Estado</th>
+                    <th className="pb-2 pr-2">ID</th>
+                    <th className="pb-2 pr-2">Tipo</th>
+                    <th className="pb-2 pr-2">Usuario</th>
+                    <th className="pb-2 pr-2">Monto</th>
+                    <th className="pb-2 pr-2">Moneda</th>
+                    <th className="pb-2 pr-2">Fecha Correo</th>
+                    <th className="pb-2 pr-2">Estado</th>
                   </tr>
                 </thead>
                 <tbody>
                   {pagosPaginados.map((p) => (
                     <tr key={p.id} className="border-b border-slate-800 hover:bg-slate-800/50">
-                      <td className="py-2 pr-4 text-slate-500">{p.id}</td>
-                      <td className="py-2 pr-4 font-mono text-slate-300">{p.usuario_remitente}</td>
-                      <td className="py-2 pr-4 text-slate-300">{p.monto}</td>
-                      <td className="py-2 pr-4 text-slate-400">{p.moneda}</td>
-                      <td className="py-2 pr-4 text-slate-400">{formatFecha(p.fecha_correo)}</td>
-                      <td className="py-2 pr-4">
+                      <td className="py-2 pr-2 text-slate-500">{p.id}</td>
+                      <td className="py-2 pr-2">
+                        <span className={`px-1.5 py-0.5 rounded text-[10px] font-medium ${
+                          p.tipo === 'deposito' ? 'bg-blue-950 text-blue-400' : 'bg-green-950 text-green-400'
+                        }`}>
+                          {p.tipo}
+                        </span>
+                      </td>
+                      <td className="py-2 pr-2 font-mono text-slate-300">{p.usuario_remitente ?? '—'}</td>
+                      <td className="py-2 pr-2 text-slate-300">{p.monto}</td>
+                      <td className="py-2 pr-2 text-slate-400">{p.moneda}</td>
+                      <td className="py-2 pr-2 text-slate-400">{formatFecha(p.fecha_correo)}</td>
+                      <td className="py-2 pr-2">
                         <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${
-                          p.estado === 'verificado' ? 'bg-emerald-950 text-emerald-400' : 'bg-amber-950 text-amber-400'
+                          p.estado === 'verificado' ? 'bg-emerald-950 text-emerald-400' :
+                          p.estado === 'por_revisar' ? 'bg-amber-950 text-amber-400' :
+                          'bg-amber-950 text-amber-400'
                         }`}>
                           {p.estado}
                         </span>
@@ -380,7 +446,7 @@ export default function Dashboard() {
               </div>
 
               <p className="mt-4 text-xs text-slate-500">
-                Total: {pagosBD.length} pagos | Disponibles: {pagosBD.filter(p => p.estado === 'disponible').length} | Verificados: {pagosBD.filter(p => p.estado === 'verificado').length}
+                Total: {pagosBD.length} pagos | Disponibles: {pagosBD.filter(p => p.estado === 'disponible').length} | Verificados: {pagosBD.filter(p => p.estado === 'verificado').length} | Por revisar: {pagosBD.filter(p => p.estado === 'por_revisar').length}
               </p>
             </div>
           )

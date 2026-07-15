@@ -50,6 +50,7 @@ export default function ReportTable({ pagos }: Props) {
           <thead>
             <tr className="border-b border-slate-700 text-slate-400 text-xs uppercase">
               <th className="text-left py-2 px-3">ID</th>
+              <th className="text-left py-2 px-3">Tipo</th>
               <th className="text-left py-2 px-3">Usuario</th>
               <th className="text-right py-2 px-3">Monto</th>
               <th className="text-left py-2 px-3">Fecha Correo</th>
@@ -61,7 +62,16 @@ export default function ReportTable({ pagos }: Props) {
             {pagosPaginados.map((pago) => (
               <tr key={pago.id} className="border-b border-slate-800 hover:bg-slate-800/50">
                 <td className="py-2 px-3 text-slate-500">{pago.id}</td>
-                <td className="py-2 px-3 text-slate-200">{pago.usuario_remitente}</td>
+                <td className="py-2 px-3">
+                  <span className={`px-1.5 py-0.5 rounded text-[10px] font-medium ${
+                    pago.tipo === 'deposito'
+                      ? 'bg-blue-900/50 text-blue-400 border border-blue-700'
+                      : 'bg-green-900/50 text-green-400 border border-green-700'
+                  }`}>
+                    {pago.tipo}
+                  </span>
+                </td>
+                <td className="py-2 px-3 text-slate-200">{pago.usuario_remitente ?? '—'}</td>
                 <td className="py-2 px-3 text-right text-slate-200 font-mono">
                   {pago.monto.toFixed(2)} {pago.moneda}
                 </td>
@@ -72,6 +82,8 @@ export default function ReportTable({ pagos }: Props) {
                   <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${
                     pago.estado === 'verificado'
                       ? 'bg-emerald-900/50 text-emerald-400 border border-emerald-700'
+                      : pago.estado === 'por_revisar'
+                      ? 'bg-amber-900/50 text-amber-400 border border-amber-700'
                       : 'bg-amber-900/50 text-amber-400 border border-amber-700'
                   }`}>
                     {pago.estado}
