@@ -1,5 +1,5 @@
 export interface PagoBinance {
-  id: number
+  id: number | string  // number (SQLite) or string UUID (PostgreSQL)
   tipo: 'pago' | 'deposito'
   usuario_remitente: string | null
   monto: number
@@ -56,3 +56,5 @@ export interface AppSettings {
   imap_user: string
   imap_password: string
 }
+
+export { type LoginRequest, type LoginResponse, type User, type AuthState } from './auth'

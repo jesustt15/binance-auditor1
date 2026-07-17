@@ -1,376 +1,379 @@
-[IMAP] --- Body del correo #3 ---
-<!-- # smartling.placeholder_format_custom=\$\{.+?\} --><html xmlns="http://www.w3.org/1999/xhtml" xmlns:v="urn:schemas-microsoft-com:vml" xmlns:o="urn:schemas-microsoft-com:office:office">  <head>    <title>    </title>    <!--[if !mso]><!-->    <meta http-equiv="X-UA-Compatible" content="IE=edge">    <!--<![endif]-->        <meta name="viewport" content="width=device-width, initial-scale=1">    <style type="text/css">      #outlook a {        padding:0;      }      body {        margin:0;        padding:0;        -webkit-text-size-adjust:100%;        -ms-text-size-adjust:100%;      }      table, td {        border-collapse:collapse;        mso-table-lspace:0pt;        mso-table-rspace:0pt;      }      img {        border:0;        height:auto;        line-height:100%;        outline:none;        text-decoration:none;        -ms-interpolation-mode:bicubic;      }      p {        display:block;        margin:13px 0;      }    </style>    <!--[if mso]><noscript><xml><o:OfficeDocumentSettings><o:AllowPNG/><o:PixelsPerInch>96</o:PixelsPerInch></o:OfficeDocumentSettings></xml></noscript><![endif]-->    <!--[if lte mso 11]><style type="text/css">.mj-outlook-group-fix { width:100% !important; }</style><![endif]-->    <style type="text/css">      @media only screen and (min-width:480px) {        .mj-column-per-100 {          width:100% !important;          max-width: 100%;        }        .mj-column-per-25 {          width:25% !important;          max-width: 25%;        }        .mj-column-per-50 {          width:50% !important;          max-width: 50%;        }      }    </style>    <style media="screen and (min-width:480px)">      .moz-text-html .mj-column-per-100 {        width:100% !important;        max-width: 100%;      }      .moz-text-html .mj-column-per-25 {        width:25% !important;        max-width: 25%;      }      .moz-text-html .mj-column-per-50 {        width:50% !important;        max-width: 50%;      }    </style>    <style type="text/css">      @media only screen and (max-width:480px) {        table.mj-full-width-mobile {          width: 100% !important;        }        td.mj-full-width-mobile {          width: auto !important;        }      }    </style>    <style type="text/css">      :root {        color-scheme: light !important;        supported-color-schemes: light !important;      }      @media only screen and (min-width:480px) {        body:not(.gjs-dashed) .hidden-desktop {          display: none !important;        }        div.mj-group-full-width {          width: 100% !important;          max-width: 100% !important;        }      }      @media only screen and (max-width:480px) {        body:not(.gjs-dashed) .hidden-mobile {          display: none !important;        }      }    </style>    <meta name="color-scheme" content="light only">    <meta name="supported-color-schemes" content="light">  <meta http-equiv="Content-Type" content="text/html; charset=utf-8" /></head>  <body style="word-spacing:normal;background-color:#efefef;">
-<div style="background-color: #efefef;"><!--[if mso | IE]><table align="center" border="0" cellpadding="0" cellspacing="0" class="" role="presentation" style="width:600px;" width="600" ><tr><td style="line-height:0px;font-size:0px;mso-line-height-rule:exactly;"><![endif]-->
-<div style="margin: 0px auto; max-width: 600px;">
-<table style="width: 100%;" role="presentation" border="0" cellspacing="0" cellpadding="0" align="center">
-<tbody>
-<tr>
-<td style="direction: ltr; font-size: 0px; padding: 0; text-align: center;"><!--[if mso | IE]><table role="presentation" border="0" cellpadding="0" cellspacing="0"><tr><td class="" width="600px" ><table align="center" border="0" cellpadding="0" cellspacing="0" class="" role="presentation" style="width:600px;" width="600" ><tr><td style="line-height:0px;font-size:0px;mso-line-height-rule:exactly;"><![endif]-->
-<div style="margin: 0px auto; max-width: 600px;">
-<table style="width: 100%;" role="presentation" border="0" cellspacing="0" cellpadding="0" align="center">
-<tbody>
-<tr>
-<td style="direction: ltr; font-size: 0px; padding: 0; text-align: center;"><!--[if mso | IE]><table role="presentation" border="0" cellpadding="0" cellspacing="0"><tr><td class="" style="vertical-align:top;width:600px;" ><![endif]-->
-<div class="mj-column-per-100 mj-outlook-group-fix" style="font-size: 0px; text-align: left; direction: ltr; display: inline-block; vertical-align: top; width: 100%;">
-<table style="vertical-align: top;" role="presentation" border="0" width="100%" cellspacing="0" cellpadding="0">
-<tbody>
-<tr>
-<td style="font-size: 0px; padding: 0; word-break: break-word;" align="center">
-<table style="min-width: 100%; max-width: 100%; width: 100px; border-collapse: collapse; border-spacing: 0px;" role="presentation" border="0" cellspacing="0" cellpadding="0">
-<tbody>
-<tr>
-<td><img style="border: 0; display: block; outline: none; text-decoration: none; height: auto; min-width: 100%; width: 100%; max-width: 100%; font-size: 13px;" src="https://public.bnbstatic.com/image/ufo/20210831/1e00bd49-0695-4eaa-8ab0-6dd89a7087fb.png" width="100" height="auto" /></td>
-</tr>
-</tbody>
-</table>
-</td>
-</tr>
-</tbody>
-</table>
-</div>
-<!--[if mso | IE]></td></tr></table><![endif]--></td>
-</tr>
-</tbody>
-</table>
-</div>
-<!--[if mso | IE]></td></tr></table></td></tr></table><![endif]--></td>
-</tr>
-</tbody>
-</table>
-</div>
-<!--[if mso | IE]></td></tr></table><table align="center" border="0" cellpadding="0" cellspacing="0" class="" role="presentation" style="width:600px;" width="600" bgcolor="#ffffff" ><tr><td style="line-height:0px;font-size:0px;mso-line-height-rule:exactly;"><![endif]-->
-<div style="background: #ffffff; background-color: #ffffff; margin: 0px auto; max-width: 600px;">
-<table style="background: #ffffff; background-color: #ffffff; width: 100%;" role="presentation" border="0" cellspacing="0" cellpadding="0" align="center">
-<tbody>
-<tr>
-<td style="direction: ltr; font-size: 0px; padding: 5px 5px 5px 5px; text-align: center;"><!--[if mso | IE]><table role="presentation" border="0" cellpadding="0" cellspacing="0"><tr><td class="" width="600px" ><table align="center" border="0" cellpadding="0" cellspacing="0" class="" role="presentation" style="width:590px;" width="590" ><tr><td style="line-height:0px;font-size:0px;mso-line-height-rule:exactly;"><![endif]-->
-<div style="margin: 0px auto; max-width: 590px;">
-<table style="width: 100%;" role="presentation" border="0" cellspacing="0" cellpadding="0" align="center">
-<tbody>
-<tr>
-<td style="direction: ltr; font-size: 0px; padding: 5px 5px 5px 5px; text-align: center;"><!--[if mso | IE]><table role="presentation" border="0" cellpadding="0" cellspacing="0"><tr><td class="" style="vertical-align:top;width:580px;" ><![endif]-->
-<div class="mj-column-per-100 mj-outlook-group-fix" style="font-size: 0px; text-align: left; direction: ltr; display: inline-block; vertical-align: top; width: 100%;">
-<table style="vertical-align: top;" role="presentation" border="0" width="100%" cellspacing="0" cellpadding="0">
-<tbody>
-<tr>
-<td style="font-size: 0px; padding: 5px 5px 10px; word-break: break-word; width: 100%;" align="left">
-<div style="font-family: BinancePlex,Arial,PingFangSC-Regular,'Microsoft YaHei',sans-serif; font-size: 20px; font-weight: 900; line-height: 25px; text-align: left; color: #000000;">Pago recibido correctamente</div>
-</td>
-</tr>
-<tr>
-<td style="background: #ffffff; font-size: 0px; padding: 5px; word-break: break-word; width: 100%;" align="left">
-<div style="font-family: BinancePlex,Arial,PingFangSC-Regular,'Microsoft YaHei',sans-serif; font-size: 14px; line-height: 20px; text-align: left; color: #000000;">Recibiste una transferencia:</div>
-</td>
-</tr>
-<tr>
-<td class="mj-group-full-width" style="font-size: 0px; word-break: break-word; width: 100%;">
-<div class="mj-outlook-group-fix mj-group-full-width" style="font-size: 0; line-height: 0; text-align: left; display: inline-block; width: 100%; direction: ltr; background-color: #eeeeee;"><!--[if mso | IE]><table bgcolor="#eeeeee" border="0" cellpadding="0" cellspacing="0" role="presentation" ><tr><td style="vertical-align:top;width:580px;" ><![endif]-->
-<div class="mj-column-per-100 mj-outlook-group-fix" style="font-size: 0px; text-align: left; direction: ltr; display: inline-block; vertical-align: top; width: 100%;">
-<table style="vertical-align: top;" role="presentation" border="0" width="100%" cellspacing="0" cellpadding="0">
-<tbody>
-<tr>
-<td style="font-size: 0px; padding: 5px 5px 5px 5px; white-space: nowrap;" align="left">
-<div style="font-family: BinancePlex,Arial,PingFangSC-Regular,'Microsoft YaHei',sans-serif; font-size: 14px; line-height: 20px; text-align: left; color: #5e6673;">Fecha y hora:</div>
-</td>
-<td style="font-size: 0px; padding: 5px 5px 5px 5px; word-break: break-word;" align="right">
-<div style="font-family: BinancePlex,Arial,PingFangSC-Regular,'Microsoft YaHei',sans-serif; font-size: 14px; line-height: 20px; text-align: right; color: #000000;">2026-07-13 12:21:22(UTC)</div>
-</td>
-</tr>
-<tr>
-<td style="font-size: 0px; padding: 5px 5px 5px 5px; white-space: nowrap;" align="left">
-<div style="font-family: BinancePlex,Arial,PingFangSC-Regular,'Microsoft YaHei',sans-serif; font-size: 14px; line-height: 20px; text-align: left; color: #5e6673;">Remitente:</div>
-</td>
-<td style="font-size: 0px; padding: 5px 5px 5px 5px; word-break: break-word;" align="right">
-<div style="font-family: BinancePlex,Arial,PingFangSC-Regular,'Microsoft YaHei',sans-serif; font-size: 14px; line-height: 20px; text-align: right; color: #000000;">Pipolozada</div>
-</td>
-</tr>
-<tr>
-<td style="font-size: 0px; padding: 5px 5px 5px 5px; white-space: nowrap;" align="left">
-<div style="font-family: BinancePlex,Arial,PingFangSC-Regular,'Microsoft YaHei',sans-serif; font-size: 14px; line-height: 20px; text-align: left; color: #5e6673;">Monto:</div>
-</td>
-<td style="font-size: 0px; padding: 5px 5px 5px 5px; word-break: break-word;" align="right">
-<div style="font-family: BinancePlex,Arial,PingFangSC-Regular,'Microsoft YaHei',sans-serif; font-size: 14px; line-height: 20px; text-align: right; color: #000000;">80 USDT</div>
-</td>
-</tr>
-</tbody>
-</table>
-</div>
-</div>
-</td>
-</tr>
-<tr>
-<td style="font-size: 0px; padding: 10px 5px; word-break: break-word; width: 100%;" align="left">
-<table style="border-collapse: separate; line-height: 100%;" role="presentation" border="0" cellspacing="0" cellpadding="0">
-<tbody>
-<tr>
-<td style="border: none; border-radius: 3px; cursor: auto; mso-padding-alt: 10px 25px; background: #FCD535;" role="presentation" align="center" valign="middle" bgcolor="#FCD535">Ver Hist&oacute;rico de Transa&ccedil;&otilde;es do Binance Pay<a href="https://n342f91h.r.ap-northeast-1.awstrack.me/L0/https:%2F%2Fapp.binance.com%2Fmy%2Fpayment%2Fhistory%3F_dp=L3BheW1lbnQvZnVuZHM_aGlkZVBheUVudHJ5R3VpZGU9ZmFsc2UmaGlzdG9yeVJlZGlyZWN0PXRydWU/1/0106019f5b6ccc14-f52ed84b-05fe-44f6-a0d6-04bfe4ef3124-000000/pS5N_nc2SyZ55-hJ8vRFGya8CWk=258" target="_blank" rel="noopener" style="display: inline-block; background: #FCD535; color: #000000; font-family: BinancePlex,Arial,PingFangSC-Regular,'Microsoft YaHei',sans-serif; font-size: 14px; font-weight: 900; line-height: 15px; margin: 0; text-decoration: none; text-transform: none; padding: 10px 25px; mso-padding-alt: 0px; border-radius: 3px;">Ver historial de transacciones de Pay</a></td>
-</tr>
-</tbody>
-</table>
-</td>
-</tr>
-<tr>
-<td style="font-size: 0px; padding: 5px; word-break: break-word; width: 100%;" align="left">
-<div style="font-family: BinancePlex,Arial,PingFangSC-Regular,'Microsoft YaHei',sans-serif; font-size: 14px; line-height: 20px; text-align: left; color: #000000;">
-<div>&nbsp;</div>
-&nbsp;No respondas a este mensaje autom&aacute;tico.</div>
-</td>
-</tr>
-</tbody>
-</table>
-</div>
-<!--[if mso | IE]></td></tr></table><![endif]--></td>
-</tr>
-</tbody>
-</table>
-</div>
-<!--[if mso | IE]></td></tr></table></td></tr></table><![endif]--></td>
-</tr>
-</tbody>
-</table>
-</div>
-<!--[if mso | IE]></td></tr></table><table align="center" border="0" cellpadding="0" cellspacing="0" class="" role="presentation" style="width:600px;" width="600" bgcolor="#ffffff" ><tr><td style="line-height:0px;font-size:0px;mso-line-height-rule:exactly;"><![endif]--></div>
-<div style="background-color: #efefef;">
-<div style="background: #ffffff; background-color: #ffffff; margin: 0px auto; max-width: 600px;">&nbsp;</div>
-<!--[if mso | IE]></td></tr></table><![endif]--></div>
-<div style="background-color: #efefef;">
-<div style="background-color: #ffffff; margin: 0px auto; max-width: 600px;">&nbsp;</div>
-<div style="background: #ffffff; background-color: #ffffff; margin: 0px auto; max-width: 600px;">
-<table style="background: #ffffff; background-color: #ffffff; width: 100%;" role="presentation" border="0" cellspacing="0" cellpadding="0" align="center">
-<tbody>
-<tr>
-<td style="border: 0 none #000000; direction: ltr; font-size: 0px; padding: 5px 5px 5px 5px; text-align: center;"><!--[if mso | IE]><table role="presentation" border="0" cellpadding="0" cellspacing="0"><tr><td class="" width="600px" ><table align="center" border="0" cellpadding="0" cellspacing="0" class="" role="presentation" style="width:590px;" width="590" ><tr><td style="line-height:0px;font-size:0px;mso-line-height-rule:exactly;"><![endif]-->
-<div style="margin: 0px auto; max-width: 590px;">
-<table style="width: 100%;" role="presentation" border="0" cellspacing="0" cellpadding="0" align="center">
-<tbody>
-<tr>
-<td style="direction: ltr; font-size: 0px; padding: 5px 5px 5px 5px; text-align: center;"><!--[if mso | IE]><table role="presentation" border="0" cellpadding="0" cellspacing="0"><tr><td class="" style="vertical-align:top;width:580px;" ><![endif]-->
-<div class="mj-column-per-100 mj-outlook-group-fix" style="font-size: 0px; text-align: left; direction: ltr; display: inline-block; vertical-align: top; width: 100%;">
-<table style="vertical-align: top;" role="presentation" border="0" width="100%" cellspacing="0" cellpadding="0">
-<tbody>
-<tr>
-<td style="font-size: 0px; padding: 5px 5px 5px 5px; word-break: break-word;" align="center">
-<p style="border-top: solid 1px #f0b90b; font-size: 1px; margin: 0px auto; width: 100%;">&nbsp;</p>
-<!--[if mso | IE]><table align="center" border="0" cellpadding="0" cellspacing="0" style="border-top:solid 1px #f0b90b;font-size:1px;margin:0px auto;width:570px;" role="presentation" width="570px" ><tr><td style="height:0;line-height:0;"> &nbsp;</td></tr></table><![endif]--></td>
-</tr>
-<tr>
-<td style="font-size: 0px; padding: 5px 5px 5px 5px; word-break: break-word;" align="center">
-<div style="font-family: BinancePlex,Arial,PingFangSC-Regular,'Microsoft YaHei',sans-serif; font-size: 14px; font-weight: 900; line-height: 20px; text-align: center; color: #f0b90b;">&iexcl;Mantente conectado!</div>
-</td>
-</tr>
-<tr>
-<td class="mj-group-full-width" style="font-size: 0px; word-break: break-word;">
-<div class="mj-column-per-25 mj-outlook-group-fix mj-group-full-width" style="font-size: 0; line-height: 0; text-align: left; display: inline-block; width: 100%; direction: ltr;"><!--[if mso | IE]><table border="0" cellpadding="0" cellspacing="0" role="presentation" ><tr><td style="vertical-align:top;width:145px;" ><![endif]-->
-<div class="mj-column-per-100 mj-outlook-group-fix" style="font-size: 0px; text-align: left; direction: ltr; display: inline-block; vertical-align: top; width: 100%;">
-<table style="vertical-align: top;" role="presentation" border="0" width="100%" cellspacing="0" cellpadding="0">
-<tbody>
-<tr>
-<td style="font-size: 0px; padding: 5px 5px 5px 5px; word-break: break-word;" align="center"><!--[if mso | IE]><table align="center" border="0" cellpadding="0" cellspacing="0" role="presentation" ><tr><td><![endif]-->
-<table style="float: none; display: inline-table;" role="presentation" border="0" cellspacing="0" cellpadding="0" align="center">
-<tbody>
-<tr>
-<td style="padding: 4px; vertical-align: middle;">
-<table style="border-radius: 3px; width: 20px;" role="presentation" border="0" cellspacing="0" cellpadding="0">
-<tbody>
-<tr>
-<td style="padding: 0px 5px; font-size: 0; height: 20px; vertical-align: middle; width: 20px;"><a href="https://n342f91h.r.ap-northeast-1.awstrack.me/L0/https:%2F%2Ftwitter.com%2Fbinance/1/0106019f5b6ccc14-f52ed84b-05fe-44f6-a0d6-04bfe4ef3124-000000/-DA4O3sj_ZM3AaB-QjKrITzlvyY=258" target="_blank" rel="noopener"> <img style="border-radius: 3px; display: block;" src="https://public.bnbstatic.com/image/social/twitter-dark.png" width="20" height="20" /> </a></td>
-</tr>
-</tbody>
-</table>
-</td>
-</tr>
-</tbody>
-</table>
-<!--[if mso | IE]></td><td><![endif]-->
-<table style="float: none; display: inline-table;" role="presentation" border="0" cellspacing="0" cellpadding="0" align="center">
-<tbody>
-<tr>
-<td style="padding: 4px; vertical-align: middle;">
-<table style="border-radius: 3px; width: 20px;" role="presentation" border="0" cellspacing="0" cellpadding="0">
-<tbody>
-<tr>
-<td style="padding: 0px 5px; font-size: 0; height: 20px; vertical-align: middle; width: 20px;"><a href="https://n342f91h.r.ap-northeast-1.awstrack.me/L0/https:%2F%2Ftelegram.me%2FBinanceExchange/1/0106019f5b6ccc14-f52ed84b-05fe-44f6-a0d6-04bfe4ef3124-000000/JisqSizDB1vP2kDhIgm3GXtXIkY=258" target="_blank" rel="noopener"> <img style="border-radius: 3px; display: block;" src="https://public.bnbstatic.com/image/social/telegram-dark.png" width="20" height="20" /> </a></td>
-</tr>
-</tbody>
-</table>
-</td>
-</tr>
-</tbody>
-</table>
-<!--[if mso | IE]></td><td><![endif]-->
-<table style="float: none; display: inline-table;" role="presentation" border="0" cellspacing="0" cellpadding="0" align="center">
-<tbody>
-<tr>
-<td style="padding: 4px; vertical-align: middle;">
-<table style="border-radius: 3px; width: 20px;" role="presentation" border="0" cellspacing="0" cellpadding="0">
-<tbody>
-<tr>
-<td style="padding: 0px 5px; font-size: 0; height: 20px; vertical-align: middle; width: 20px;"><a href="https://n342f91h.r.ap-northeast-1.awstrack.me/L0/https:%2F%2Fwww.facebook.com%2Fbinance/1/0106019f5b6ccc14-f52ed84b-05fe-44f6-a0d6-04bfe4ef3124-000000/v4k3RF2-rhY9bYxmhWM3x60w89Q=258" target="_blank" rel="noopener"> <img style="border-radius: 3px; display: block;" src="https://public.bnbstatic.com/image/social/facebook-dark.png" width="20" height="20" /> </a></td>
-</tr>
-</tbody>
-</table>
-</td>
-</tr>
-</tbody>
-</table>
-<!--[if mso | IE]></td><td><![endif]-->
-<table style="float: none; display: inline-table;" role="presentation" border="0" cellspacing="0" cellpadding="0" align="center">
-<tbody>
-<tr>
-<td style="padding: 4px; vertical-align: middle;">
-<table style="border-radius: 3px; width: 20px;" role="presentation" border="0" cellspacing="0" cellpadding="0">
-<tbody>
-<tr>
-<td style="padding: 0px 5px; font-size: 0; height: 20px; vertical-align: middle; width: 20px;"><a href="https://n342f91h.r.ap-northeast-1.awstrack.me/L0/https:%2F%2Fwww.linkedin.com%2Fcompany%2Fbinance/1/0106019f5b6ccc14-f52ed84b-05fe-44f6-a0d6-04bfe4ef3124-000000/SOThkkYjze8y0h6bT0J5H0OLC1E=258" target="_blank" rel="noopener"> <img style="border-radius: 3px; display: block;" src="https://public.bnbstatic.com/image/social/linkedin-dark.png" width="20" height="20" /> </a></td>
-</tr>
-</tbody>
-</table>
-</td>
-</tr>
-</tbody>
-</table>
-<!--[if mso | IE]></td><td><![endif]-->
-<table style="float: none; display: inline-table;" role="presentation" border="0" cellspacing="0" cellpadding="0" align="center">
-<tbody>
-<tr>
-<td style="padding: 4px; vertical-align: middle;">
-<table style="border-radius: 3px; width: 20px;" role="presentation" border="0" cellspacing="0" cellpadding="0">
-<tbody>
-<tr>
-<td style="padding: 0px 5px; font-size: 0; height: 20px; vertical-align: middle; width: 20px;"><a href="https://n342f91h.r.ap-northeast-1.awstrack.me/L0/https:%2F%2Fwww.youtube.com%2Fc%2FBinanceYoutube%2Ffeatured/1/0106019f5b6ccc14-f52ed84b-05fe-44f6-a0d6-04bfe4ef3124-000000/_rCTkv5Fyo8vE6I3Hx2cId_1NKE=258" target="_blank" rel="noopener"> <img style="border-radius: 3px; display: block;" src="https://public.bnbstatic.com/image/social/youtube-dark.png" width="20" height="20" /> </a></td>
-</tr>
-</tbody>
-</table>
-</td>
-</tr>
-</tbody>
-</table>
-<!--[if mso | IE]></td><td><![endif]-->
-<table style="float: none; display: inline-table;" role="presentation" border="0" cellspacing="0" cellpadding="0" align="center">
-<tbody>
-<tr>
-<td style="padding: 4px; vertical-align: middle;">
-<table style="border-radius: 3px; width: 20px;" role="presentation" border="0" cellspacing="0" cellpadding="0">
-<tbody>
-<tr>
-<td style="padding: 0px 5px; font-size: 0; height: 20px; vertical-align: middle; width: 20px;"><a href="https://n342f91h.r.ap-northeast-1.awstrack.me/L0/https:%2F%2Fwww.reddit.com%2Fr%2Fbinance%2F/1/0106019f5b6ccc14-f52ed84b-05fe-44f6-a0d6-04bfe4ef3124-000000/QxXnki2bcMnZUBhJTDyGz1SyExA=258" target="_blank" rel="noopener"> <img style="border-radius: 3px; display: block;" src="https://public.bnbstatic.com/image/social/reddit-dark.png" width="20" height="20" /> </a></td>
-</tr>
-</tbody>
-</table>
-</td>
-</tr>
-</tbody>
-</table>
-<!--[if mso | IE]></td><td><![endif]-->
-<table style="float: none; display: inline-table;" role="presentation" border="0" cellspacing="0" cellpadding="0" align="center">
-<tbody>
-<tr>
-<td style="padding: 4px; vertical-align: middle;">
-<table style="border-radius: 3px; width: 20px;" role="presentation" border="0" cellspacing="0" cellpadding="0">
-<tbody>
-<tr>
-<td style="padding: 0px 5px; font-size: 0; height: 20px; vertical-align: middle; width: 20px;"><a href="https://n342f91h.r.ap-northeast-1.awstrack.me/L0/https:%2F%2Finstagram.com%2Fbinance/1/0106019f5b6ccc14-f52ed84b-05fe-44f6-a0d6-04bfe4ef3124-000000/iJZXqx-ehtAzHlZ85EB0nRcZfzk=258" target="_blank" rel="noopener"> <img style="border-radius: 3px; display: block;" src="https://public.bnbstatic.com/image/social/instagram-dark.png" width="20" height="20" /> </a></td>
-</tr>
-</tbody>
-</table>
-</td>
-</tr>
-</tbody>
-</table>
-<!--[if mso | IE]></td></tr></table><![endif]--></td>
-</tr>
-<tr>
-<td class="mj-group-full-width" style="font-size: 0px; word-break: break-word;">
-<div class="mj-column-per-50 mj-outlook-group-fix mj-group-full-width" style="font-size: 0; line-height: 0; text-align: left; display: inline-block; width: 100%; direction: ltr;"><!--[if mso | IE]><table border="0" cellpadding="0" cellspacing="0" role="presentation" ><tr><td style="vertical-align:top;width:36px;" ><![endif]-->
-<div class="mj-column-per-50 mj-outlook-group-fix" style="font-size: 0px; text-align: left; direction: ltr; display: inline-block; vertical-align: top; width: 50%;">
-<table style="vertical-align: top;" role="presentation" border="0" width="100%" cellspacing="0" cellpadding="0">
-<tbody>
-<tr>
-<td style="font-size: 0px; padding: 5px 5px 5px 5px; word-break: break-word;" align="left">
-<div style="font-family: BinancePlex,Arial,PingFangSC-Regular,'Microsoft YaHei',sans-serif; font-size: 11px; line-height: 20px; text-align: left; color: #000000;"><span id="ipunt">Como medida de protecci&oacute;n, configura tu c&oacute;digo anti-phishing</span> <a href="https://n342f91h.r.ap-northeast-1.awstrack.me/L0/https:%2F%2Fwww.binance.com%2Fen%2Fmy%2Fsecurity%2Fanti-phishing-code/1/0106019f5b6ccc14-f52ed84b-05fe-44f6-a0d6-04bfe4ef3124-000000/VHFvcyaxzBCGifRnjiHXxRtJTzo=258" style="font-family: BinancePlex,Arial,PingFangSC-Regular,'Microsoft YaHei',sans-serif; color: #f0b90b;">aqu&iacute;</a></div>
-</td>
-</tr>
-</tbody>
-</table>
-</div>
-<!--[if mso | IE]></td><td style="vertical-align:top;width:36px;" ><![endif]-->
-<div class="mj-column-per-50 mj-outlook-group-fix" style="font-size: 0px; text-align: left; direction: ltr; display: inline-block; vertical-align: top; width: 50%;">
-<table style="vertical-align: top;" role="presentation" border="0" width="100%" cellspacing="0" cellpadding="0">
-<tbody>
-<tr>
-<td style="font-size: 0px; padding: 5px 5px 11px 5px; padding-bottom: 11px; word-break: break-word;" align="left">
-<div style="font-family: BinancePlex,Arial,PingFangSC-Regular,'Microsoft YaHei',sans-serif; font-size: 14px; line-height: 20px; text-align: left; color: #000000;"><div style="float: right;">
-      <div style="display:inline-block;background-color: #F8D12F;padding: 0 11px;border: 1px solid #F8D12F;border-radius: 4px 0 0 4px; text-align: center;">
-            Anti-phishing
-      </div><div style="display:inline-block;background: #FFFDF0;
-      border: 1px solid #FCEA9C;
-      padding: 0 11px;
-      border-radius: 0 4px 4px 0; text-align: center;">
-      arrocito</div></div>
-</td>
-</tr>
-</tbody>
-</table>
-</div>
-<!--[if mso | IE]></td></tr></table><![endif]--></div>
-</td>
-</tr>
-</tbody>
-</table>
-</div>
-<!--[if mso | IE]></td></tr></table><![endif]--></div>
-</td>
-</tr>
-<tr>
-<td style="font-size: 0px; padding: 5px 5px 5px 5px; word-break: break-word;" align="left">
-<div style="font-family: BinancePlex,Arial,PingFangSC-Regular,'Microsoft YaHei',sans-serif; font-size: 11px; line-height: 15px; text-align: left; color: #000000;">
-<div>
-<div><strong>Aviso legal: </strong>Los precios de los activos digitales est&aacute;n sujetos a un alto riesgo de mercado y volatilidad. El valor de la inversi&oacute;n puede aumentar o disminuir, y podr&iacute;as no recuperar la cantidad invertida. Solo t&uacute; eres responsable de tus decisiones de inversi&oacute;n y Binance no se hace responsable de ninguna p&eacute;rdida en la que incurras. Los rendimientos observados en el pasado no garantizan rendimientos futuros. Solo debes invertir en productos con los que est&eacute;s familiarizado y cuyos riesgos comprendas plenamente. Debes evaluar detenidamente tu experiencia de inversi&oacute;n, tu situaci&oacute;n financiera, tus objetivos de inversi&oacute;n y tu tolerancia al riesgo, as&iacute; como consultar a un asesor financiero independiente antes de realizar cualquier inversi&oacute;n. Este material no debe interpretarse como asesor&iacute;a financiera. Si deseas obtener m&aacute;s informaci&oacute;n, consulta nuestros <span style="color: #f1c40f;"><a href="https://n342f91h.r.ap-northeast-1.awstrack.me/L0/https:%2F%2Fwww.binance.com%2Fen%2Fterms/1/0106019f5b6ccc14-f52ed84b-05fe-44f6-a0d6-04bfe4ef3124-000000/f_ZL3CuicW7FvmbTkJyDP8ZTyRc=258" style="color: #f1c40f;">T&eacute;rminos de uso</a></span> y la <span style="color: #f1c40f;"><a href="https://n342f91h.r.ap-northeast-1.awstrack.me/L0/https:%2F%2Fwww.binance.com%2Fen%2Frisk-warning/1/0106019f5b6ccc14-f52ed84b-05fe-44f6-a0d6-04bfe4ef3124-000000/0zeeQqi4A7PRfzv-EjP0-1T1n8E=258" style="color: #f1c40f;">Advertencia de riesgo</a></span>.<br /><br /></div>
-<div><strong>Nota: </strong>Ten cuidado con los sitios de phishing y aseg&uacute;rate de que siempre est&eacute;s en nuestro sitio web oficial Binance.com cuando ingreses datos confidenciales.<br /><br />
-<div id="iqd7v">Recibiste este correo electr&oacute;nico por ser un usuario registrado de <a href="https://n342f91h.r.ap-northeast-1.awstrack.me/L0/https:%2F%2Fwww.binance.com%2Fen/1/0106019f5b6ccc14-f52ed84b-05fe-44f6-a0d6-04bfe4ef3124-000000/lJ-Z1Oo447a5cXDJSxsqwKfow9g=258"><span style="color: #f1c40f;">binance.com</span></a></div>
-<div id="iku7oh">Para obtener m&aacute;s informaci&oacute;n sobre c&oacute;mo procesamos los datos, consulta nuestra <a href="https://n342f91h.r.ap-northeast-1.awstrack.me/L0/https:%2F%2Fwww.binance.com%2Fen%2Fprivacy/1/0106019f5b6ccc14-f52ed84b-05fe-44f6-a0d6-04bfe4ef3124-000000/VnxbyVlJdiBxa82qquNH55UqF-M=258"><span style="color: #f1c40f;">Pol&iacute;tica de privacidad.</span></a></div>
-</div>
-</div>
-</div>
-</td>
-</tr>
-</tbody>
-</table>
-</div>
-<!--[if mso | IE]></td></tr></table><![endif]--></td>
-</tr>
-</tbody>
-</table>
-</div>
-<!--[if mso | IE]></td></tr></table></td></tr><tr><td class="" width="600px" ><table align="center" border="0" cellpadding="0" cellspacing="0" class="" role="presentation" style="width:590px;" width="590" ><tr><td style="line-height:0px;font-size:0px;mso-line-height-rule:exactly;"><![endif]-->
-<div style="margin: 0px auto; max-width: 590px;">
-<table style="width: 100%;" role="presentation" border="0" cellspacing="0" cellpadding="0" align="center">
-<tbody>
-<tr>
-<td style="direction: ltr; font-size: 0px; padding: 5px 5px 5px 5px; text-align: center;"><!--[if mso | IE]><table role="presentation" border="0" cellpadding="0" cellspacing="0"><tr><td class="" style="vertical-align:top;width:580px;" ><![endif]-->
-<div class="mj-column-per-100 mj-outlook-group-fix" style="font-size: 0px; text-align: left; direction: ltr; display: inline-block; vertical-align: top; width: 100%;">
-<table style="vertical-align: top;" role="presentation" border="0" width="100%" cellspacing="0" cellpadding="0">
-<tbody>
-<tr>
-<td style="font-size: 0px; padding: 5px 5px 5px 5px; word-break: break-word;" align="center">
-<div style="font-family: BinancePlex,Arial,PingFangSC-Regular,'Microsoft YaHei',sans-serif; font-size: 11px; line-height: 15px; text-align: center; color: #000000;">&copy; 2026 Binance.com. Todos los derechos reservados.</div>
-</td>
-</tr>
-</tbody>
-</table>
-</div>
-<!--[if mso | IE]></td></tr></table><![endif]--></td>
-</tr>
-</tbody>
-</table>
-</div>
-<!--[if mso | IE]></td></tr></table></td></tr></table><![endif]--></td>
-</tr>
-</tbody>
-</table>
-</div>
-<!--[if mso | IE]></td></tr></table><![endif]--></div>
-<div style="display:none;"><strong id="uuid">Y202607131213a797aad3ff4dc2a8559609ebdbf199</strong></div><img alt="" src="https://n342f91h.r.ap-northeast-1.awstrack.me/I0/0106019f5b6ccc14-f52ed84b-05fe-44f6-a0d6-04bfe4ef3124-000000/QXX1XlRJaQ3o-Ta0MmeCxBUAG-s=258" style="display: none; width: 1px; height: 1px;">
-</body></html><img src="https://www.google-analytics.com/collect?v=1&t=event&tid=UA-237515680-1&cid=19b769f4-1d97-4423-8d74-18dae0f859cb&ec=email-mp&ea=电子邮件打开"/>
-[IMAP] --- Fin body ---
-[IMAP] Progreso: 3/3 (nuevos: 0, duplicados: 0)
+
+C:\Users\Usuario\Documents\binance-auditor1>cargo run --manifest-path server/Cargo.toml
+warning: unused imports: `Deserialize` and `Serialize`
+ --> src\config.rs:2:13
+  |
+2 | use serde::{Deserialize, Serialize};
+  |             ^^^^^^^^^^^  ^^^^^^^^^
+  |
+  = note: `#[warn(unused_imports)]` (part of `#[warn(unused)]`) on by default
+
+warning: unused imports: `DateTime` and `Duration`
+ --> src\imap_sync.rs:1:14
+  |
+1 | use chrono::{DateTime, Duration, Utc};
+  |              ^^^^^^^^  ^^^^^^^^
+
+warning: unused import: `mailparse::parse_mail`
+ --> src\imap_sync.rs:2:5
+  |
+2 | use mailparse::parse_mail;
+  |     ^^^^^^^^^^^^^^^^^^^^^
+
+warning: unused import: `uuid::Uuid`
+ --> src\imap_sync.rs:5:5
+  |
+5 | use uuid::Uuid;
+  |     ^^^^^^^^^^
+
+warning: unused import: `crate::models::FraudResult`
+  --> src\imap_sync.rs:10:5
+   |
+10 | use crate::models::FraudResult;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: variable does not need to be mutable
+   --> src\db.rs:195:9
+    |
+195 |     let mut query = sqlx::query_as::<_, Payment>(
+    |         ----^^^^^
+    |         |
+    |         help: remove this `mut`
+    |
+    = note: `#[warn(unused_mut)]` (part of `#[warn(unused)]`) on by default
+
+warning: variable does not need to be mutable
+   --> src\db.rs:246:9
+    |
+246 |     let mut query = sqlx::query_as::<_, Payment>(
+    |         ----^^^^^
+    |         |
+    |         help: remove this `mut`
+
+warning: variable does not need to be mutable
+   --> src\db.rs:481:9
+    |
+481 |     let mut sql = String::from(
+    |         ----^^^
+    |         |
+    |         help: remove this `mut`
+
+warning: unused import: `std::io::Write`
+    --> src\routes\mod.rs:1193:9
+     |
+1193 |     use std::io::Write;
+     |         ^^^^^^^^^^^^^^
+
+warning: unused variable: `dmarc`
+   --> src\anti_fraud.rs:163:52
+    |
+163 | fn determine_failure_reason(dkim: bool, spf: bool, dmarc: bool) -> String {
+    |                                                    ^^^^^ help: if this is intentional, prefix it with an underscore: `_dmarc`
+    |
+    = note: `#[warn(unused_variables)]` (part of `#[warn(unused)]`) on by default
+
+warning: unused variable: `sql`
+   --> src\db.rs:481:9
+    |
+481 |     let mut sql = String::from(
+    |         ^^^^^^^ help: if this is intentional, prefix it with an underscore: `_sql`
+
+warning: variable does not need to be mutable
+   --> src\imap_sync.rs:381:9
+    |
+381 |     let mut nuevos = 0i64;
+    |         ----^^^^^^
+    |         |
+    |         help: remove this `mut`
+
+warning: variable does not need to be mutable
+   --> src\imap_sync.rs:382:9
+    |
+382 |     let mut duplicados = 0i64;
+    |         ----^^^^^^^^^^
+    |         |
+    |         help: remove this `mut`
+
+warning: variable does not need to be mutable
+   --> src\imap_sync.rs:383:9
+    |
+383 |     let mut en_cuarentena = 0i64;
+    |         ----^^^^^^^^^^^^^
+    |         |
+    |         help: remove this `mut`
+
+warning: value assigned to `buf` is never read
+    --> src\routes\mod.rs:1189:28
+     |
+1189 |     let mut buf: Vec<u8> = Vec::new();
+     |                            ^^^^^^^^^^ this value is reassigned later and never used
+...
+1199 |     buf = std::fs::read(&tmp_path).map_err(|e| format!("Read temp xlsx error: {}", e))?;
+     |     --- `buf` is overwritten here before the previous value is read
+     |
+     = note: `#[warn(unused_assignments)]` (part of `#[warn(unused)]`) on by default
+
+warning: unused variable: `cert_pem`
+  --> src\main.rs:89:17
+   |
+89 |             let cert_pem = std::fs::read_to_string(cert)?;
+   |                 ^^^^^^^^ help: if this is intentional, prefix it with an underscore: `_cert_pem`
+
+warning: unused variable: `key_pem`
+  --> src\main.rs:90:17
+   |
+90 |             let key_pem = std::fs::read_to_string(key)?;
+   |                 ^^^^^^^ help: if this is intentional, prefix it with an underscore: `_key_pem`
+
+warning: constant `DKIM_HEADER` is never used
+ --> src\anti_fraud.rs:6:7
+  |
+6 | const DKIM_HEADER: &str = "DKIM-Signature";
+  |       ^^^^^^^^^^^
+  |
+  = note: `#[warn(dead_code)]` (part of `#[warn(unused)]`) on by default
+
+warning: constant `SPF_HEADER` is never used
+ --> src\anti_fraud.rs:7:7
+  |
+7 | const SPF_HEADER: &str = "Received-SPF";
+  |       ^^^^^^^^^^
+
+warning: constant `DMARC_HEADER` is never used
+ --> src\anti_fraud.rs:8:7
+  |
+8 | const DMARC_HEADER: &str = "Authentication-Results";
+  |       ^^^^^^^^^^^^
+
+warning: function `verify_email_headers` is never used
+  --> src\anti_fraud.rs:14:8
+   |
+14 | pub fn verify_email_headers(raw_email: &[u8]) -> FraudResult {
+   |        ^^^^^^^^^^^^^^^^^^^^
+
+warning: function `determine_failure_reason` is never used
+   --> src\anti_fraud.rs:163:4
+    |
+163 | fn determine_failure_reason(dkim: bool, spf: bool, dmarc: bool) -> String {
+    |    ^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: function `check_duplicate` is never used
+   --> src\anti_fraud.rs:174:8
+    |
+174 | pub fn check_duplicate(
+    |        ^^^^^^^^^^^^^^^
+
+warning: function `check_amount_tamper` is never used
+   --> src\anti_fraud.rs:190:8
+    |
+190 | pub fn check_amount_tamper(
+    |        ^^^^^^^^^^^^^^^^^^^
+
+warning: field `username` is never read
+   --> src\auth.rs:106:9
+    |
+104 | pub struct AuthUser {
+    |            -------- field in this struct
+105 |     pub user_id: String,
+106 |     pub username: String,
+    |         ^^^^^^^^
+    |
+    = note: `AuthUser` has derived impls for the traits `Clone` and `Debug`, but these are intentionally ignored during dead code analysis
+
+warning: function `require_auth_any` is never used
+   --> src\auth.rs:148:8
+    |
+148 | pub fn require_auth_any(_auth: &AuthUser) -> Result<(), AuthError> {
+    |        ^^^^^^^^^^^^^^^^
+
+warning: function `insert_payment` is never used
+   --> src\db.rs:358:14
+    |
+358 | pub async fn insert_payment(
+    |              ^^^^^^^^^^^^^^
+
+warning: function `payment_exists_by_uid` is never used
+   --> src\db.rs:395:14
+    |
+395 | pub async fn payment_exists_by_uid(
+    |              ^^^^^^^^^^^^^^^^^^^^^
+
+warning: function `payment_exists_by_fields` is never used
+   --> src\db.rs:409:14
+    |
+409 | pub async fn payment_exists_by_fields(
+    |              ^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: function `insert_quarantined_email` is never used
+   --> src\db.rs:513:14
+    |
+513 | pub async fn insert_quarantined_email(
+    |              ^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: function `insert_import_row` is never used
+   --> src\db.rs:666:14
+    |
+666 | pub async fn insert_import_row(
+    |              ^^^^^^^^^^^^^^^^^
+
+warning: constant `IMAP_HOST` is never used
+  --> src\imap_sync.rs:12:7
+   |
+12 | const IMAP_HOST: &str = "imap.gmail.com";
+   |       ^^^^^^^^^
+
+warning: constant `IMAP_PORT` is never used
+  --> src\imap_sync.rs:13:7
+   |
+13 | const IMAP_PORT: u16 = 993;
+   |       ^^^^^^^^^
+
+warning: function `html_to_text` is never used
+  --> src\imap_sync.rs:20:4
+   |
+20 | fn html_to_text(html: &str) -> String {
+   |    ^^^^^^^^^^^^
+
+warning: function `is_label` is never used
+  --> src\imap_sync.rs:67:4
+   |
+67 | fn is_label(line: &str, candidates: &[&str]) -> bool {
+   |    ^^^^^^^^
+
+warning: function `subject_matches_deposit` is never used
+  --> src\imap_sync.rs:73:4
+   |
+73 | fn subject_matches_deposit(subject: &str) -> bool {
+   |    ^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: function `parse_time_field` is never used
+  --> src\imap_sync.rs:80:4
+   |
+80 | fn parse_time_field(s: &str) -> Option<String> {
+   |    ^^^^^^^^^^^^^^^^
+
+warning: function `parse_amount_field` is never used
+  --> src\imap_sync.rs:87:4
+   |
+87 | fn parse_amount_field(s: &str) -> Option<(f64, String)> {
+   |    ^^^^^^^^^^^^^^^^^^
+
+warning: function `extract_deposit_data` is never used
+  --> src\imap_sync.rs:99:4
+   |
+99 | fn extract_deposit_data(text: &str, subject: &str) -> Option<crate::models::RawEmailData> {
+   |    ^^^^^^^^^^^^^^^^^^^^
+
+warning: function `extract_binance_data` is never used
+   --> src\imap_sync.rs:143:4
+    |
+143 | fn extract_binance_data(text: &str, subject: &str) -> Option<crate::models::RawEmailData> {
+    |    ^^^^^^^^^^^^^^^^^^^^
+
+warning: function `get_text_body` is never used
+   --> src\imap_sync.rs:200:4
+    |
+200 | fn get_text_body(parsed: &mailparse::ParsedMail) -> String {
+    |    ^^^^^^^^^^^^^
+
+warning: function `get_text_body_recursive` is never used
+   --> src\imap_sync.rs:204:4
+    |
+204 | fn get_text_body_recursive(parsed: &mailparse::ParsedMail, depth: usize) -> String {
+    |    ^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: function `process_synced_emails` is never used
+   --> src\imap_sync.rs:432:14
+    |
+432 | pub async fn process_synced_emails(
+    |              ^^^^^^^^^^^^^^^^^^^^^
+
+warning: enum `FraudVerdict` is never used
+  --> src\models.rs:52:10
+   |
+52 | pub enum FraudVerdict {
+   |          ^^^^^^^^^^^^
+
+warning: enum `ReviewDecision` is never used
+  --> src\models.rs:86:10
+   |
+86 | pub enum ReviewDecision {
+   |          ^^^^^^^^^^^^^^
+
+warning: struct `Import` is never constructed
+   --> src\models.rs:264:12
+    |
+264 | pub struct Import {
+    |            ^^^^^^
+
+warning: struct `ImportRow` is never constructed
+   --> src\models.rs:276:12
+    |
+276 | pub struct ImportRow {
+    |            ^^^^^^^^^
+
+warning: struct `LoginResponse` is never constructed
+   --> src\models.rs:299:12
+    |
+299 | pub struct LoginResponse {
+    |            ^^^^^^^^^^^^^
+
+warning: struct `RefreshResponse` is never constructed
+   --> src\models.rs:311:12
+    |
+311 | pub struct RefreshResponse {
+    |            ^^^^^^^^^^^^^^^
+
+warning: struct `VerifyPaymentResponse` is never constructed
+   --> src\models.rs:340:12
+    |
+340 | pub struct VerifyPaymentResponse {
+    |            ^^^^^^^^^^^^^^^^^^^^^
+
+warning: struct `SyncStatusResponse` is never constructed
+   --> src\models.rs:367:12
+    |
+367 | pub struct SyncStatusResponse {
+    |            ^^^^^^^^^^^^^^^^^^
+
+warning: struct `TriggerSyncResponse` is never constructed
+   --> src\models.rs:380:12
+    |
+380 | pub struct TriggerSyncResponse {
+    |            ^^^^^^^^^^^^^^^^^^^
+
+warning: struct `ImportResultResponse` is never constructed
+   --> src\models.rs:395:12
+    |
+395 | pub struct ImportResultResponse {
+    |            ^^^^^^^^^^^^^^^^^^^^
+
+warning: struct `FraudResult` is never constructed
+   --> src\models.rs:444:12
+    |
+444 | pub struct FraudResult {
+    |            ^^^^^^^^^^^
+
+warning: struct `RawEmailData` is never constructed
+   --> src\models.rs:453:12
+    |
+453 | pub struct RawEmailData {
+    |            ^^^^^^^^^^^^
+
+warning: struct `ClientModeConfig` is never constructed
+   --> src\models.rs:466:12
+    |
+466 | pub struct ClientModeConfig {
+    |            ^^^^^^^^^^^^^^^^
+
+warning: `binance-auditor-server` (bin "binance-auditor-server") generated 56 warnings (run `cargo fix --bin "binance-auditor-server" -p binance-auditor-server` to apply 15 suggestions)
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 0.47s
+warning: the following packages contain code that will be rejected by a future version of Rust: proc-macro-error2 v2.0.1
+note: to see what the problems were, use the option `--future-incompat-report`, or run `cargo report future-incompatibilities --id 1`
+     Running `server\target\debug\binance-auditor-server.exe`
+2026-07-17T19:26:43.886372Z  INFO binance_auditor_server: Iniciando Binance Auditor Server v1.0...
+[WARN] Usando JWT_SECRET por defecto. Configuralo en produccion!
+2026-07-17T19:26:43.886782Z  INFO binance_auditor_server: Config cargada: listen=0.0.0.0:8443, db=localhost:5432/auditor_db
+2026-07-17T19:26:43.887030Z  INFO binance_auditor_server: age identity cargada de C:\Users\Usuario\AppData\Roaming\binance-auditor-server\age_key.txt
+Error: "DB pool error: error returned from database: password authentication failed for user \"auditor\""
+error: process didn't exit successfully: `server\target\debug\binance-auditor-server.exe` (exit code: 1)

@@ -14,6 +14,9 @@ dist-ssr
 
 # Rust build artifacts
 src-tauri/target/
+server/target/
+migration/target/
+*.exe
 
 # Editor directories and files
 .vscode/*
@@ -25,3 +28,15 @@ src-tauri/target/
 *.njsproj
 *.sln
 *.sw?
+
+# Env files (credentials)
+.env
+.env.*
+!.env.example
+
+# CodeGraph index
+.codegraph/
+
+# Example files
+.example
+
