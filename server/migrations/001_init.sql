@@ -6,7 +6,7 @@ CREATE TABLE IF NOT EXISTS users (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     username VARCHAR(50) UNIQUE NOT NULL,
     password_hash VARCHAR(255) NOT NULL,  -- argon2id
-    role VARCHAR(20) NOT NULL CHECK (role IN ('admin', 'cashier')),
+    role TEXT NOT NULL CHECK (role IN ('admin', 'cashier')),
     station_name VARCHAR(100),
     is_active BOOLEAN NOT NULL DEFAULT true,
     created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
@@ -33,12 +33,12 @@ CREATE TABLE IF NOT EXISTS payments (
     monto DECIMAL(15, 2) NOT NULL,
     moneda VARCHAR(10) NOT NULL DEFAULT 'USDT',
     fecha_correo TIMESTAMPTZ NOT NULL,
-    estado VARCHAR(20) NOT NULL DEFAULT 'disponible'
+    estado TEXT NOT NULL DEFAULT 'disponible'
         CHECK (estado IN ('disponible', 'verificado', 'rechazado', 'por_revisar', 'cuarentena')),
     observaciones TEXT,
     verificado_en TIMESTAMPTZ,
     verified_by UUID REFERENCES users(id),
-    fraud_verdict VARCHAR(50) DEFAULT 'clean'
+    fraud_verdict TEXT DEFAULT 'clean'
         CHECK (fraud_verdict IN ('clean', 'dkim_fail', 'spf_fail', 'dmarc_fail', 'duplicate', 'amount_tamper')),
     fraud_details JSONB,
     email_uid INTEGER,  -- IMAP UID for dedup
@@ -60,7 +60,7 @@ CREATE TABLE IF NOT EXISTS quarantined_emails (
     parsed_data JSONB,  -- what extract_binance_data would have produced
     reviewed_by UUID REFERENCES users(id),
     reviewed_at TIMESTAMPTZ,
-    review_decision VARCHAR(20) DEFAULT 'pending' CHECK (review_decision IN ('accept', 'reject', 'pending')),
+    review_decision TEXT DEFAULT 'pending' CHECK (review_decision IN ('accept', 'reject', 'pending')),
     created_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
