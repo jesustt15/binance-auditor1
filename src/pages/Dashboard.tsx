@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect } from 'react'
 import { invoke } from '@tauri-apps/api/core'
 import SyncButton from '../components/SyncButton'
 import VerificationForm from '../components/VerificationForm'
@@ -9,11 +9,11 @@ import { api } from '../lib/api'
 export default function Dashboard() {
   const [pagosBD, setPagosBD] = useState<PagoBinance[] | null>(null)
   const [loadingBD, setLoadingBD] = useState(false)
-  const [desdeBD, setDesdeBD] = useState('')
-  const [hastaBD, setHastaBD] = useState('')
-  const [montoExactoBD, setMontoExactoBD] = useState('')
-  const [montoMinBD, setMontoMinBD] = useState('')
-  const [montoMaxBD, setMontoMaxBD] = useState('')
+  const [desdeBD, setDesdeBD] = useState(() => sessionStorage.getItem('dash_desde') || '')
+  const [hastaBD, setHastaBD] = useState(() => sessionStorage.getItem('dash_hasta') || '')
+  const [montoExactoBD, setMontoExactoBD] = useState(() => sessionStorage.getItem('dash_montoExacto') || '')
+  const [montoMinBD, setMontoMinBD] = useState(() => sessionStorage.getItem('dash_montoMin') || '')
+  const [montoMaxBD, setMontoMaxBD] = useState(() => sessionStorage.getItem('dash_montoMax') || '')
   const [paginaBD, setPaginaBD] = useState(1)
   const [porPaginaBD, setPorPaginaBD] = useState(20)
 
@@ -86,6 +86,15 @@ export default function Dashboard() {
       setLoadingBD(false)
     }
   }
+
+  // Persist filters to sessionStorage so they survive tab switches
+  useEffect(() => {
+    sessionStorage.setItem('dash_desde', desdeBD)
+    sessionStorage.setItem('dash_hasta', hastaBD)
+    sessionStorage.setItem('dash_montoExacto', montoExactoBD)
+    sessionStorage.setItem('dash_montoMin', montoMinBD)
+    sessionStorage.setItem('dash_montoMax', montoMaxBD)
+  }, [desdeBD, hastaBD, montoExactoBD, montoMinBD, montoMaxBD])
 
   const totalPaginasBD = useMemo(() => pagosBD ? Math.ceil(pagosBD.length / porPaginaBD) : 0, [pagosBD, porPaginaBD])
 

@@ -99,7 +99,7 @@ pub fn load_or_create_age_key(path: &str) -> Result<age::x25519::Identity, Strin
     }
 }
 
-/// Encripta texto con age (usando la clave publica derivada del Identity)
+/// Encripta texto con age y devuelve base64 (seguro para DB TEXT)
 pub fn encrypt_with_age(identity: &age::x25519::Identity, plaintext: &str) -> Result<String, String> {
     let recipient = identity.to_public();
     let encryptor = age::Encryptor::with_recipients([&recipient as &dyn age::Recipient].into_iter())
@@ -115,12 +115,21 @@ pub fn encrypt_with_age(identity: &age::x25519::Identity, plaintext: &str) -> Re
     std::io::Write::flush(&mut writer)
         .map_err(|e| format!("Error finalizando encriptacion: {}", e))?;
 
-    Ok(String::from_utf8_lossy(&encrypted).to_string())
+    Ok(base64_encode(&encrypted))
 }
 
-/// Desencripta texto con age
-pub fn decrypt_with_age(identity: &age::x25519::Identity, encrypted: &str) -> Result<String, String> {
-    let decryptor = age::Decryptor::new(std::io::Cursor::new(encrypted.as_bytes()))
+/// Desencripta texto con age. Acepta tanto formato base64 (nuevo) como binario crudo (legacy).
+pub fn decrypt_with_age(identity: &age::x25519::Identity, encrypted_data: &str) -> Result<String, String> {
+    // Try base64 first (new format)
+    let encrypted = match base64_decode(encrypted_data) {
+        Ok(data) if !data.is_empty() => data,
+        _ => {
+            // Fallback: treat as raw binary (legacy format from before base64 encoding)
+            encrypted_data.as_bytes().to_vec()
+        }
+    };
+
+    let decryptor = age::Decryptor::new(std::io::Cursor::new(&encrypted))
         .map_err(|e| format!("Error creando decryptor age: {}", e))?;
 
     let mut decrypted = vec![];
@@ -132,4 +141,56 @@ pub fn decrypt_with_age(identity: &age::x25519::Identity, encrypted: &str) -> Re
         .map_err(|e| format!("Error leyendo datos desencriptados: {}", e))?;
 
     String::from_utf8(decrypted).map_err(|e| format!("Datos desencriptados no son UTF-8: {}", e))
+}
+
+/// Encodes binary data to base64 without padding (URL-safe not needed, just for DB storage)
+fn base64_encode(data: &[u8]) -> String {
+    use std::fmt::Write;
+    const CHARS: &[u8; 64] = b"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+    let mut out = String::new();
+    for chunk in data.chunks(3) {
+        let b0 = chunk[0] as u32;
+        let b1 = if chunk.len() > 1 { chunk[1] as u32 } else { 0 };
+        let b2 = if chunk.len() > 2 { chunk[2] as u32 } else { 0 };
+        let triple = (b0 << 16) | (b1 << 8) | b2;
+        out.push(CHARS[((triple >> 18) & 0x3F) as usize] as char);
+        out.push(CHARS[((triple >> 12) & 0x3F) as usize] as char);
+        if chunk.len() > 1 {
+            out.push(CHARS[((triple >> 6) & 0x3F) as usize] as char);
+        }
+        if chunk.len() > 2 {
+            out.push(CHARS[(triple & 0x3F) as usize] as char);
+        }
+    }
+    out
+}
+
+/// Decodes base64 string back to bytes
+fn base64_decode(input: &str) -> Result<Vec<u8>, String> {
+    let input = input.trim();
+    if input.is_empty() {
+        return Ok(vec![]);
+    }
+    let mut out = Vec::with_capacity(input.len() * 3 / 4);
+    let mut buffer: u32 = 0;
+    let mut bits = 0u8;
+
+    for &b in input.as_bytes() {
+        let val = match b {
+            b'A'..=b'Z' => b - b'A',
+            b'a'..=b'z' => b - b'a' + 26,
+            b'0'..=b'9' => b - b'0' + 52,
+            b'+' => 62,
+            b'/' => 63,
+            _ => continue, // skip whitespace and padding
+        } as u32;
+        buffer = (buffer << 6) | val;
+        bits += 6;
+        if bits >= 8 {
+            bits -= 8;
+            out.push((buffer >> bits) as u8);
+            buffer &= (1 << bits) - 1;
+        }
+    }
+    Ok(out)
 }

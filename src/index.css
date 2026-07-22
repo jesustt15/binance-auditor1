@@ -1,1 +1,6 @@
 @import "tailwindcss";
+
+/* Fix date inputs on dark backgrounds */
+input[type="date"] {
+  color-scheme: dark;
+}

@@ -40,7 +40,7 @@ pub fn build_router(state: SharedState) -> Router {
         .route("/api/sync/status", get(sync_status_handler))
         .route("/api/sync/trigger", post(trigger_sync_handler))
         // IMAP credentials (admin)
-        .route("/api/config/imap", get(get_imap_config_handler).put(put_imap_config_handler))
+        .route("/api/config/imap", get(get_imap_config_handler).put(put_imap_config_handler).post(put_imap_config_handler))
         // Import
         .route("/api/import/csv", post(import_csv_handler))
         .route("/api/import/excel", post(import_excel_handler))
