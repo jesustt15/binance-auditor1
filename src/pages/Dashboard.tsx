@@ -31,19 +31,27 @@ export default function Dashboard() {
   // Quick verify state
   const [verificandoId, setVerificandoId] = useState<string | null>(null)
 
-  const quickVerifyPago = async (id: string) => {
+  const quickVerifyPago = async (p: PagoBinance) => {
     if (!window.confirm('¿Verificar este pago?')) return
-    setVerificandoId(id)
+    setVerificandoId(String(p.id))
     try {
-      const result = await api.quickVerify(id)
+      const usuario = p.usuario_remitente ?? ''
+      if (!usuario) {
+        alert('Los depósitos no pueden verificarse automáticamente')
+        return
+      }
+      const fecha = p.fecha_correo.slice(0, 10)
+      const result = await invoke<{ verificado: boolean; mensaje: string }>('verify_payment', {
+        usuarioEmpresa: usuario,
+        montoEmpresa: p.monto,
+        fechaEmpresa: fecha,
+      })
       if (result.verificado) {
-        // Refresh the list to show updated state
         if (pagosBD) listarPagos()
       } else {
         alert(result.mensaje || 'No se pudo verificar el pago')
       }
     } catch (err: any) {
-      console.error('Error verificando pago:', err)
       alert(`Error al verificar: ${err}`)
     } finally {
       setVerificandoId(null)
@@ -436,7 +444,7 @@ export default function Dashboard() {
                           </span>
                         ) : (
                           <button
-                            onClick={() => quickVerifyPago(String(p.id))}
+                            onClick={() => quickVerifyPago(p)}
                             disabled={verificandoId === String(p.id)}
                             className="px-2 py-1 bg-amber-600 hover:bg-amber-700 disabled:bg-slate-700 text-white rounded text-[11px] font-medium transition-colors"
                           >

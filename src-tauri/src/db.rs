@@ -3,6 +3,16 @@ use serde::{Serialize, Deserialize};
 use std::path::PathBuf;
 use rust_xlsxwriter::{Format, Color, Workbook};
 
+fn extract_hora_correo(fecha: &str) -> Option<String> {
+    if let Ok(dt) = chrono::DateTime::parse_from_rfc3339(fecha) {
+        return Some(dt.format("%H:%M").to_string());
+    }
+    if let Ok(dt) = chrono::NaiveDateTime::parse_from_str(fecha, "%Y-%m-%dT%H:%M:%S") {
+        return Some(dt.format("%H:%M").to_string());
+    }
+    None
+}
+
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct PagoBinance {
     pub id: i64,
@@ -14,6 +24,8 @@ pub struct PagoBinance {
     pub estado: String,
     pub observaciones: Option<String>,
     pub verificado_en: Option<String>,
+    pub hora_correo: Option<String>,
+    pub verified_by_name: Option<String>,
     pub creado_en: String,
 }
 
@@ -177,16 +189,19 @@ pub fn find_pago_for_verification(
     let pago = stmt.query_row(
         params![usuario, monto, fecha_inicio, fecha_fin],
         |row| {
+            let fecha_correo: String = row.get(5)?;
             Ok(PagoBinance {
                 id: row.get(0)?,
                 tipo: row.get(1)?,
                 usuario_remitente: row.get(2)?,
                 monto: row.get(3)?,
                 moneda: row.get(4)?,
-                fecha_correo: row.get(5)?,
+                fecha_correo: fecha_correo.clone(),
                 estado: row.get(6)?,
                 observaciones: row.get(7)?,
                 verificado_en: row.get(8)?,
+                hora_correo: extract_hora_correo(&fecha_correo),
+                verified_by_name: None,
                 creado_en: row.get(9)?,
             })
         },
@@ -215,16 +230,19 @@ pub fn get_all_pagos(conn: &Connection) -> Result<Vec<PagoBinance>> {
     )?;
 
     let pagos = stmt.query_map([], |row| {
+        let fecha_correo: String = row.get(5)?;
         Ok(PagoBinance {
             id: row.get(0)?,
             tipo: row.get(1)?,
             usuario_remitente: row.get(2)?,
             monto: row.get(3)?,
             moneda: row.get(4)?,
-            fecha_correo: row.get(5)?,
+            fecha_correo: fecha_correo.clone(),
             estado: row.get(6)?,
             observaciones: row.get(7)?,
             verificado_en: row.get(8)?,
+            hora_correo: extract_hora_correo(&fecha_correo),
+            verified_by_name: None,
             creado_en: row.get(9)?,
         })
     })?.collect::<Result<Vec<_>>>()?;
@@ -272,16 +290,19 @@ pub fn get_reports(
     let param_refs: Vec<&dyn rusqlite::types::ToSql> = param_values.iter().map(|v| v as &dyn rusqlite::types::ToSql).collect();
 
     let pagos = stmt.query_map(param_refs.as_slice(), |row| {
+        let fecha_correo: String = row.get(5)?;
         Ok(PagoBinance {
             id: row.get(0)?,
             tipo: row.get(1)?,
             usuario_remitente: row.get(2)?,
             monto: row.get(3)?,
             moneda: row.get(4)?,
-            fecha_correo: row.get(5)?,
+            fecha_correo: fecha_correo.clone(),
             estado: row.get(6)?,
             observaciones: row.get(7)?,
             verificado_en: row.get(8)?,
+            hora_correo: extract_hora_correo(&fecha_correo),
+            verified_by_name: None,
             creado_en: row.get(9)?,
         })
     })?.collect::<Result<Vec<_>>>()?;
@@ -334,16 +355,19 @@ pub fn get_reports_by_sender(
     let param_refs: Vec<&dyn rusqlite::types::ToSql> = param_values.iter().map(|v| v as &dyn rusqlite::types::ToSql).collect();
 
     let pagos = stmt.query_map(param_refs.as_slice(), |row| {
+        let fecha_correo: String = row.get(5)?;
         Ok(PagoBinance {
             id: row.get(0)?,
             tipo: row.get(1)?,
             usuario_remitente: row.get(2)?,
             monto: row.get(3)?,
             moneda: row.get(4)?,
-            fecha_correo: row.get(5)?,
+            fecha_correo: fecha_correo.clone(),
             estado: row.get(6)?,
             observaciones: row.get(7)?,
             verificado_en: row.get(8)?,
+            hora_correo: extract_hora_correo(&fecha_correo),
+            verified_by_name: None,
             creado_en: row.get(9)?,
         })
     })?.collect::<Result<Vec<_>>>()?;
@@ -431,6 +455,8 @@ mod tests {
                 estado TEXT NOT NULL DEFAULT 'disponible',
                 observaciones TEXT,
                 verificado_en TEXT,
+                hora_correo TEXT,
+                verified_by_name TEXT,
                 creado_en TEXT NOT NULL DEFAULT (datetime('now'))
             );
             CREATE INDEX idx_pagos_busqueda ON pagos_binance(tipo, usuario_remitente, monto, estado);"
