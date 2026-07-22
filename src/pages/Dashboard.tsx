@@ -4,9 +4,10 @@ import SyncButton from '../components/SyncButton'
 import VerificationForm from '../components/VerificationForm'
 import type { PagoBinance, ImportResult } from '../types'
 import { formatFecha } from '../lib/format'
-import { api } from '../lib/api'
+import { useAuth } from '../App'
 
 export default function Dashboard() {
+  const { auth } = useAuth()
   const [pagosBD, setPagosBD] = useState<PagoBinance[] | null>(null)
   const [loadingBD, setLoadingBD] = useState(false)
   const [desdeBD, setDesdeBD] = useState('')
@@ -41,10 +42,12 @@ export default function Dashboard() {
         return
       }
       const fecha = p.fecha_correo.slice(0, 10)
+      const verifiedByName = auth.user?.username ?? 'desconocido'
       const result = await invoke<{ verificado: boolean; mensaje: string }>('verify_payment', {
         usuarioEmpresa: usuario,
         montoEmpresa: p.monto,
         fechaEmpresa: fecha,
+        verifiedByName,
       })
       if (result.verificado) {
         if (pagosBD) listarPagos()
@@ -116,7 +119,7 @@ export default function Dashboard() {
       setImportResultado(null)
       setImportError(null)
       try {
-        const result = await invoke<ImportResult>('pick_and_import_excel')
+        const result = await invoke<ImportResult>('pick_and_import_excel', { username: auth.user?.username ?? 'desconocido' })
         setImportResultado(result)
       } catch (err: any) {
         if (err !== 'No se selecciono ningun archivo') {
@@ -132,7 +135,7 @@ export default function Dashboard() {
       setImportError(null)
       try {
         const contenido = await file.text()
-        const result = await invoke<ImportResult>('import_csv', { contenido })
+        const result = await invoke<ImportResult>('import_csv', { contenido, username: auth.user?.username ?? 'desconocido' })
         setImportResultado(result)
       } catch (err: any) {
         setImportError(`Error al procesar CSV: ${err}`)

@@ -1,8 +1,10 @@
 import { useState, type FormEvent } from 'react'
 import { invoke } from '@tauri-apps/api/core'
 import type { VerifyResult } from '../types'
+import { useAuth } from '../App'
 
 export default function VerificationForm() {
+  const { auth } = useAuth()
   const [usuario, setUsuario] = useState('')
   const [monto, setMonto] = useState('')
   const [fecha, setFecha] = useState('')
@@ -19,6 +21,7 @@ export default function VerificationForm() {
         usuarioEmpresa: usuario,
         montoEmpresa: parseFloat(monto),
         fechaEmpresa: fecha,
+        verifiedByName: auth.user?.username ?? 'desconocido',
       })
       setResultado(result)
     } catch (err: any) {

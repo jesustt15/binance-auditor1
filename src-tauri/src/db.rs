@@ -57,6 +57,7 @@ pub fn init_db() -> Result<Connection> {
     let conn = Connection::open(db_path)?;
 
     migrate_schema_v2(&conn)?;
+    migrate_schema_v3(&conn)?;
 
     conn.execute(
         "CREATE TABLE IF NOT EXISTS pagos_binance (
@@ -69,6 +70,7 @@ pub fn init_db() -> Result<Connection> {
             estado TEXT NOT NULL DEFAULT 'disponible',
             observaciones TEXT,
             verificado_en TEXT,
+            verified_by_name TEXT,
             creado_en TEXT NOT NULL DEFAULT (datetime('now'))
         )",
         [],
@@ -139,6 +141,21 @@ fn migrate_schema_v2(conn: &Connection) -> Result<()> {
     Ok(())
 }
 
+fn migrate_schema_v3(conn: &Connection) -> Result<()> {
+    let version: i64 = conn.pragma_query_value(None, "user_version", |row| row.get(0))?;
+    if version >= 3 {
+        return Ok(());
+    }
+
+    conn.execute_batch(
+        "ALTER TABLE pagos_binance ADD COLUMN verified_by_name TEXT"
+    ).ok();
+
+    conn.pragma_update(None, "user_version", 3)?;
+
+    Ok(())
+}
+
 pub fn insert_pago(conn: &Connection, usuario: Option<&str>, monto: f64, moneda: &str, fecha: &str, tipo: &str) -> Result<()> {
     let estado = if tipo == "deposito" { "por_revisar" } else { "disponible" };
     conn.execute(
@@ -176,7 +193,7 @@ pub fn find_pago_for_verification(
 ) -> Result<Option<PagoBinance>> {
     let mut stmt = conn.prepare(
         "SELECT id, tipo, usuario_remitente, monto, moneda, fecha_correo, estado,
-                observaciones, verificado_en, creado_en
+                observaciones, verificado_en, verified_by_name, creado_en
          FROM pagos_binance
          WHERE usuario_remitente = ?1
            AND monto = ?2
@@ -201,8 +218,8 @@ pub fn find_pago_for_verification(
                 observaciones: row.get(7)?,
                 verificado_en: row.get(8)?,
                 hora_correo: extract_hora_correo(&fecha_correo),
-                verified_by_name: None,
-                creado_en: row.get(9)?,
+                verified_by_name: row.get(9)?,
+                creado_en: row.get(10)?,
             })
         },
     ).optional()?;
@@ -210,13 +227,13 @@ pub fn find_pago_for_verification(
     Ok(pago)
 }
 
-pub fn mark_as_verificado(conn: &Connection, id: i64, observaciones: &str) -> Result<()> {
+pub fn mark_as_verificado(conn: &Connection, id: i64, observaciones: &str, verified_by_name: &str) -> Result<()> {
     let now = chrono::Utc::now().to_rfc3339();
     conn.execute(
         "UPDATE pagos_binance
-         SET estado = 'verificado', verificado_en = ?1, observaciones = ?2
+         SET estado = 'verificado', verificado_en = ?1, observaciones = ?2, verified_by_name = ?4
          WHERE id = ?3",
-        params![now, observaciones, id],
+        params![now, observaciones, id, verified_by_name],
     )?;
     Ok(())
 }
@@ -224,7 +241,7 @@ pub fn mark_as_verificado(conn: &Connection, id: i64, observaciones: &str) -> Re
 pub fn get_all_pagos(conn: &Connection) -> Result<Vec<PagoBinance>> {
     let mut stmt = conn.prepare(
         "SELECT id, tipo, usuario_remitente, monto, moneda, fecha_correo, estado,
-                observaciones, verificado_en, creado_en
+                observaciones, verificado_en, verified_by_name, creado_en
          FROM pagos_binance
          ORDER BY fecha_correo DESC",
     )?;
@@ -242,8 +259,8 @@ pub fn get_all_pagos(conn: &Connection) -> Result<Vec<PagoBinance>> {
             observaciones: row.get(7)?,
             verificado_en: row.get(8)?,
             hora_correo: extract_hora_correo(&fecha_correo),
-            verified_by_name: None,
-            creado_en: row.get(9)?,
+            verified_by_name: row.get(9)?,
+            creado_en: row.get(10)?,
         })
     })?.collect::<Result<Vec<_>>>()?;
 
@@ -260,7 +277,7 @@ pub fn get_reports(
 ) -> Result<Vec<PagoBinance>> {
     let mut sql = String::from(
         "SELECT id, tipo, usuario_remitente, monto, moneda, fecha_correo, estado,
-                observaciones, verificado_en, creado_en
+                observaciones, verificado_en, verified_by_name, creado_en
          FROM pagos_binance
          WHERE fecha_correo >= ?1 AND fecha_correo <= ?2",
     );
@@ -302,8 +319,8 @@ pub fn get_reports(
             observaciones: row.get(7)?,
             verificado_en: row.get(8)?,
             hora_correo: extract_hora_correo(&fecha_correo),
-            verified_by_name: None,
-            creado_en: row.get(9)?,
+            verified_by_name: row.get(9)?,
+            creado_en: row.get(10)?,
         })
     })?.collect::<Result<Vec<_>>>()?;
 
@@ -323,7 +340,7 @@ pub fn get_reports_by_sender(
 
     let mut sql = String::from(
         "SELECT id, tipo, usuario_remitente, monto, moneda, fecha_correo, estado,
-                observaciones, verificado_en, creado_en
+                observaciones, verificado_en, verified_by_name, creado_en
          FROM pagos_binance
          WHERE fecha_correo >= ?1 AND fecha_correo <= ?2
            AND usuario_remitente LIKE ?3",
@@ -367,8 +384,8 @@ pub fn get_reports_by_sender(
             observaciones: row.get(7)?,
             verificado_en: row.get(8)?,
             hora_correo: extract_hora_correo(&fecha_correo),
-            verified_by_name: None,
-            creado_en: row.get(9)?,
+            verified_by_name: row.get(9)?,
+            creado_en: row.get(10)?,
         })
     })?.collect::<Result<Vec<_>>>()?;
 
@@ -610,8 +627,13 @@ mod tests {
             PRAGMA user_version = 1;"
         ).unwrap();
 
-        // Run migration
+        // Run migrations
         migrate_schema_v2(&conn).unwrap();
+
+        let version_after_v2: i64 = conn.pragma_query_value(None, "user_version", |row| row.get(0)).unwrap();
+        assert_eq!(version_after_v2, 2);
+
+        migrate_schema_v3(&conn).unwrap();
 
         // Verify data preserved and tipo defaults to 'pago'
         let mut stmt = conn.prepare("SELECT tipo, usuario_remitente, monto, moneda, fecha_correo, estado FROM pagos_binance ORDER BY id").unwrap();
@@ -634,8 +656,13 @@ mod tests {
         assert_eq!(rows[1].1.as_deref(), Some("bob"));
         assert_eq!(rows[1].2, 100.0);
 
-        // Verify user_version
+        // Verify user_version after v3
         let version: i64 = conn.pragma_query_value(None, "user_version", |row| row.get(0)).unwrap();
-        assert_eq!(version, 2);
+        assert_eq!(version, 3);
+
+        // Verify verified_by_name column works
+        conn.execute("UPDATE pagos_binance SET verified_by_name = ?1 WHERE id = 1", params!["test_user"]).unwrap();
+        let name: Option<String> = conn.query_row("SELECT verified_by_name FROM pagos_binance WHERE id = 1", [], |row| row.get(0)).unwrap();
+        assert_eq!(name.as_deref(), Some("test_user"));
     }
 }
