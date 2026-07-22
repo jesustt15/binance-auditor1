@@ -533,7 +533,8 @@ pub async fn process_synced_emails(
                 continue;
             }
 
-            // Insert payment
+            let hora_final = hora_correo.clone().or_else(|| extract_hora(&data.fecha));
+
             let _payment_id = db::insert_payment(
                 pool,
                 data.usuario.as_deref(),
@@ -545,7 +546,7 @@ pub async fn process_synced_emails(
                 Some(&fraud_result.verdict),
                 Some(&fraud_result.details),
                 raw_headers_json.as_ref(),
-                hora_correo.as_deref(),
+                hora_final.as_deref(),
             )
             .await?;
 

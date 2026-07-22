@@ -56,7 +56,16 @@ async fn client_login(
         let guard = state.http_client.lock().map_err(|e| e.to_string())?;
         guard.as_ref().ok_or("Cliente HTTP no inicializado")?.clone()
     };
-    client.login(&username, &password).await
+    let result = client.login(&username, &password).await?;
+
+    if let Some(token) = result.get("token").and_then(|t| t.as_str()) {
+        let mut guard = state.http_client.lock().map_err(|e| e.to_string())?;
+        if let Some(ref mut client) = *guard {
+            client.set_token(token.to_string());
+        }
+    }
+
+    Ok(result)
 }
 
 #[tauri::command]
