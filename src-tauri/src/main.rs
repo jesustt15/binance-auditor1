@@ -52,8 +52,10 @@ async fn client_login(
     password: String,
     state: tauri::State<'_, AppState>,
 ) -> Result<serde_json::Value, String> {
-    let guard = state.http_client.lock().map_err(|e| e.to_string())?;
-    let client = guard.as_ref().ok_or("Cliente HTTP no inicializado")?;
+    let client = {
+        let guard = state.http_client.lock().map_err(|e| e.to_string())?;
+        guard.as_ref().ok_or("Cliente HTTP no inicializado")?.clone()
+    };
     client.login(&username, &password).await
 }
 
@@ -64,8 +66,10 @@ async fn client_verify_payment(
     fecha_empresa: String,
     state: tauri::State<'_, AppState>,
 ) -> Result<serde_json::Value, String> {
-    let guard = state.http_client.lock().map_err(|e| e.to_string())?;
-    let client = guard.as_ref().ok_or("Cliente HTTP no inicializado")?;
+    let client = {
+        let guard = state.http_client.lock().map_err(|e| e.to_string())?;
+        guard.as_ref().ok_or("Cliente HTTP no inicializado")?.clone()
+    };
     client.verify_payment(&usuario_empresa, monto_empresa, &fecha_empresa).await
 }
 
@@ -75,8 +79,10 @@ async fn client_list_payments(
     hasta: Option<String>,
     state: tauri::State<'_, AppState>,
 ) -> Result<serde_json::Value, String> {
-    let guard = state.http_client.lock().map_err(|e| e.to_string())?;
-    let client = guard.as_ref().ok_or("Cliente HTTP no inicializado")?;
+    let client = {
+        let guard = state.http_client.lock().map_err(|e| e.to_string())?;
+        guard.as_ref().ok_or("Cliente HTTP no inicializado")?.clone()
+    };
     client.list_payments(desde.as_deref(), hasta.as_deref()).await
 }
 
@@ -86,8 +92,10 @@ async fn client_trigger_sync(
     since_date: Option<String>,
     state: tauri::State<'_, AppState>,
 ) -> Result<serde_json::Value, String> {
-    let guard = state.http_client.lock().map_err(|e| e.to_string())?;
-    let client = guard.as_ref().ok_or("Cliente HTTP no inicializado")?;
+    let client = {
+        let guard = state.http_client.lock().map_err(|e| e.to_string())?;
+        guard.as_ref().ok_or("Cliente HTTP no inicializado")?.clone()
+    };
     client.trigger_sync(mode.as_deref(), since_date.as_deref()).await
 }
 
@@ -95,8 +103,10 @@ async fn client_trigger_sync(
 async fn client_get_imap_config(
     state: tauri::State<'_, AppState>,
 ) -> Result<serde_json::Value, String> {
-    let guard = state.http_client.lock().map_err(|e| e.to_string())?;
-    let client = guard.as_ref().ok_or("Cliente HTTP no inicializado")?;
+    let client = {
+        let guard = state.http_client.lock().map_err(|e| e.to_string())?;
+        guard.as_ref().ok_or("Cliente HTTP no inicializado")?.clone()
+    };
     client.get("/api/config/imap").await
 }
 
@@ -108,8 +118,10 @@ async fn client_save_imap_config(
     port: i32,
     state: tauri::State<'_, AppState>,
 ) -> Result<serde_json::Value, String> {
-    let guard = state.http_client.lock().map_err(|e| e.to_string())?;
-    let client = guard.as_ref().ok_or("Cliente HTTP no inicializado")?;
+    let client = {
+        let guard = state.http_client.lock().map_err(|e| e.to_string())?;
+        guard.as_ref().ok_or("Cliente HTTP no inicializado")?.clone()
+    };
     let body = serde_json::json!({
         "email": email,
         "password": password,
@@ -124,8 +136,10 @@ async fn client_audit_log(
     params: Option<std::collections::HashMap<String, String>>,
     state: tauri::State<'_, AppState>,
 ) -> Result<serde_json::Value, String> {
-    let guard = state.http_client.lock().map_err(|e| e.to_string())?;
-    let client = guard.as_ref().ok_or("Cliente HTTP no inicializado")?;
+    let client = {
+        let guard = state.http_client.lock().map_err(|e| e.to_string())?;
+        guard.as_ref().ok_or("Cliente HTTP no inicializado")?.clone()
+    };
     let query = params
         .map(|p| {
             p.iter()
@@ -147,8 +161,10 @@ async fn client_list_quarantine(
     status: Option<String>,
     state: tauri::State<'_, AppState>,
 ) -> Result<serde_json::Value, String> {
-    let guard = state.http_client.lock().map_err(|e| e.to_string())?;
-    let client = guard.as_ref().ok_or("Cliente HTTP no inicializado")?;
+    let client = {
+        let guard = state.http_client.lock().map_err(|e| e.to_string())?;
+        guard.as_ref().ok_or("Cliente HTTP no inicializado")?.clone()
+    };
     let path = format!("/api/quarantine?status={}", status.unwrap_or_else(|| "pending".to_string()));
     client.get(&path).await
 }
@@ -159,10 +175,63 @@ async fn client_review_quarantine(
     decision: String,
     state: tauri::State<'_, AppState>,
 ) -> Result<serde_json::Value, String> {
-    let guard = state.http_client.lock().map_err(|e| e.to_string())?;
-    let client = guard.as_ref().ok_or("Cliente HTTP no inicializado")?;
+    let client = {
+        let guard = state.http_client.lock().map_err(|e| e.to_string())?;
+        guard.as_ref().ok_or("Cliente HTTP no inicializado")?.clone()
+    };
     let body = serde_json::json!({ "decision": decision });
     client.post_json_value(&format!("/api/quarantine/{}/review", id), &body).await
+}
+
+#[tauri::command]
+async fn client_quick_verify_pago(
+    payment_id: String,
+    state: tauri::State<'_, AppState>,
+) -> Result<serde_json::Value, String> {
+    let client = {
+        let guard = state.http_client.lock().map_err(|e| e.to_string())?;
+        guard.as_ref().ok_or("Cliente HTTP no inicializado")?.clone()
+    };
+    client.quick_verify_payment(&payment_id).await
+}
+
+#[tauri::command]
+async fn client_list_users(
+    state: tauri::State<'_, AppState>,
+) -> Result<serde_json::Value, String> {
+    let client = {
+        let guard = state.http_client.lock().map_err(|e| e.to_string())?;
+        guard.as_ref().ok_or("Cliente HTTP no inicializado")?.clone()
+    };
+    client.list_users().await
+}
+
+#[tauri::command]
+async fn client_create_user(
+    username: String,
+    password: String,
+    role: String,
+    station_name: Option<String>,
+    state: tauri::State<'_, AppState>,
+) -> Result<serde_json::Value, String> {
+    let client = {
+        let guard = state.http_client.lock().map_err(|e| e.to_string())?;
+        guard.as_ref().ok_or("Cliente HTTP no inicializado")?.clone()
+    };
+    client.create_user(&username, &password, &role, station_name.as_deref()).await
+}
+
+#[tauri::command]
+async fn client_update_user(
+    user_id: String,
+    updates: serde_json::Value,
+    state: tauri::State<'_, AppState>,
+) -> Result<serde_json::Value, String> {
+    let client = {
+        let guard = state.http_client.lock().map_err(|e| e.to_string())?;
+        guard.as_ref().ok_or("Cliente HTTP no inicializado")?.clone()
+    };
+    client.update_user(&user_id, &updates).await
 }
 
 // ---------- Original standalone commands (unchanged) ----------
@@ -620,7 +689,7 @@ fn main() {
 
     tauri::Builder::default()
         .plugin(tauri_plugin_notification::init())
-        .setup(|app| {
+        .setup(move |app| {
             let app_handle = app.handle().clone();
             // En modo standalone, corremos sync en background
             if !is_client_mode {
@@ -667,6 +736,10 @@ fn main() {
             client_audit_log,
             client_list_quarantine,
             client_review_quarantine,
+            client_quick_verify_pago,
+            client_list_users,
+            client_create_user,
+            client_update_user,
             // Standalone commands
             sync_emails,
             sync_historical,

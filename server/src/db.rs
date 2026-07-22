@@ -20,21 +20,26 @@ pub async fn init_pool(database_url: &str) -> Result<PgPool, String> {
 /// PostgreSQL no soporta multi-statement en una sola query via sqlx,
 /// asi que partimos el SQL por ';' y ejecutamos cada statement individualmente.
 pub async fn run_migrations(pool: &PgPool) -> Result<(), String> {
-    let migration_sql = include_str!("../migrations/001_init.sql");
+    let migrations: &[&str] = &[
+        include_str!("../migrations/001_init.sql"),
+        include_str!("../migrations/002_add_hora_correo.sql"),
+    ];
 
-    for statement in migration_sql.split(';') {
-        let trimmed = statement.trim();
-        // Saltar comentarios y lineas vacias
-        if trimmed.is_empty() || trimmed.lines().all(|l| l.trim().starts_with("--") || l.trim().is_empty()) {
-            continue;
+    for migration_sql in migrations {
+        for statement in migration_sql.split(';') {
+            let trimmed = statement.trim();
+            // Saltar comentarios y lineas vacias
+            if trimmed.is_empty() || trimmed.lines().all(|l| l.trim().starts_with("--") || l.trim().is_empty()) {
+                continue;
+            }
+            sqlx::query(trimmed)
+                .execute(pool)
+                .await
+                .map_err(|e| {
+                    let preview: String = trimmed.chars().take(60).collect();
+                    format!("Migration error at '{}...': {}", preview, e)
+                })?;
         }
-        sqlx::query(trimmed)
-            .execute(pool)
-            .await
-            .map_err(|e| {
-                let preview: String = trimmed.chars().take(60).collect();
-                format!("Migration error at '{}...': {}", preview, e)
-            })?;
     }
 
     tracing::info!("Migraciones ejecutadas correctamente.");
@@ -170,35 +175,39 @@ pub async fn list_payments(
     monto_max: Option<f64>,
 ) -> Result<Vec<Payment>, String> {
     let mut sql = String::from(
-        "SELECT id, tipo, usuario_remitente, monto, moneda, fecha_correo, estado,
-                observaciones, verificado_en, verified_by, fraud_verdict, fraud_details,
-                email_uid, raw_headers, created_at, updated_at
+        "SELECT payments.id, payments.tipo, payments.usuario_remitente, payments.monto, payments.moneda, payments.fecha_correo, payments.estado,
+                payments.observaciones, payments.verificado_en, payments.verified_by, payments.fraud_verdict, payments.fraud_details,
+                payments.email_uid, payments.raw_headers, payments.hora_correo, payments.created_at, payments.updated_at,
+                COALESCE(users.username, 'Sistema') as verified_by_name
          FROM payments
-         WHERE fecha_correo >= $1::timestamptz AND fecha_correo <= $2::timestamptz",
+         LEFT JOIN users ON payments.verified_by = users.id
+         WHERE payments.fecha_correo >= $1::timestamptz AND payments.fecha_correo <= $2::timestamptz",
     );
 
     // Build dynamic query manually since sqlx doesn't support dynamic query! easily
     if monto_exacto.is_some() {
-        sql.push_str(" AND monto = $3::numeric");
+        sql.push_str(" AND payments.monto = $3::numeric");
     } else {
         if monto_min.is_some() {
-            sql.push_str(" AND monto >= $3::numeric");
+            sql.push_str(" AND payments.monto >= $3::numeric");
         }
         if monto_max.is_some() {
-            sql.push_str(" AND monto <= $4::numeric");
+            sql.push_str(" AND payments.monto <= $4::numeric");
         }
     }
-    sql.push_str(" ORDER BY fecha_correo DESC");
+    sql.push_str(" ORDER BY payments.fecha_correo DESC");
 
     // Use a simpler approach: fetch all within date range and filter in-memory
     // for the amount filters. This avoids complex dynamic query building.
     let mut query = sqlx::query_as::<_, Payment>(
-        "SELECT id, tipo, usuario_remitente, monto, moneda, fecha_correo, estado,
-                observaciones, verificado_en, verified_by, fraud_verdict, fraud_details,
-                email_uid, raw_headers, created_at, updated_at
+        "SELECT payments.id, payments.tipo, payments.usuario_remitente, payments.monto, payments.moneda, payments.fecha_correo, payments.estado,
+                payments.observaciones, payments.verificado_en, payments.verified_by, payments.fraud_verdict, payments.fraud_details,
+                payments.email_uid, payments.raw_headers, payments.hora_correo, payments.created_at, payments.updated_at,
+                COALESCE(users.username, 'Sistema') as verified_by_name
          FROM payments
-         WHERE fecha_correo >= $1::timestamptz AND fecha_correo <= $2::timestamptz
-         ORDER BY fecha_correo DESC",
+         LEFT JOIN users ON payments.verified_by = users.id
+         WHERE payments.fecha_correo >= $1::timestamptz AND payments.fecha_correo <= $2::timestamptz
+         ORDER BY payments.fecha_correo DESC",
     )
     .bind(desde)
     .bind(hasta);
@@ -244,14 +253,16 @@ pub async fn list_payments_by_sender(
     let pattern = format!("%{}%", remitente);
 
     let mut query = sqlx::query_as::<_, Payment>(
-        "SELECT id, tipo, usuario_remitente, monto, moneda, fecha_correo, estado,
-                observaciones, verificado_en, verified_by, fraud_verdict, fraud_details,
-                email_uid, raw_headers, created_at, updated_at
+        "SELECT payments.id, payments.tipo, payments.usuario_remitente, payments.monto, payments.moneda, payments.fecha_correo, payments.estado,
+                payments.observaciones, payments.verificado_en, payments.verified_by, payments.fraud_verdict, payments.fraud_details,
+                payments.email_uid, payments.raw_headers, payments.hora_correo, payments.created_at, payments.updated_at,
+                COALESCE(users.username, 'Sistema') as verified_by_name
          FROM payments
-         WHERE fecha_correo >= $1::timestamptz
-           AND fecha_correo <= $2::timestamptz
-           AND usuario_remitente ILIKE $3
-         ORDER BY fecha_correo DESC",
+         LEFT JOIN users ON payments.verified_by = users.id
+         WHERE payments.fecha_correo >= $1::timestamptz
+           AND payments.fecha_correo <= $2::timestamptz
+           AND payments.usuario_remitente ILIKE $3
+         ORDER BY payments.fecha_correo DESC",
     )
     .bind(desde)
     .bind(hasta)
@@ -288,10 +299,13 @@ pub async fn list_payments_by_sender(
 
 pub async fn find_payment_by_id(pool: &PgPool, id: Uuid) -> Result<Option<Payment>, String> {
     let row = sqlx::query_as::<_, Payment>(
-        "SELECT id, tipo, usuario_remitente, monto, moneda, fecha_correo, estado,
-                observaciones, verificado_en, verified_by, fraud_verdict, fraud_details,
-                email_uid, raw_headers, created_at, updated_at
-         FROM payments WHERE id = $1",
+        "SELECT payments.id, payments.tipo, payments.usuario_remitente, payments.monto, payments.moneda, payments.fecha_correo, payments.estado,
+                payments.observaciones, payments.verificado_en, payments.verified_by, payments.fraud_verdict, payments.fraud_details,
+                payments.email_uid, payments.raw_headers, payments.hora_correo, payments.created_at, payments.updated_at,
+                COALESCE(users.username, 'Sistema') as verified_by_name
+         FROM payments
+         LEFT JOIN users ON payments.verified_by = users.id
+         WHERE payments.id = $1",
     )
     .bind(id)
     .fetch_optional(pool)
@@ -308,15 +322,17 @@ pub async fn find_payment_for_verification(
     fecha_fin: &str,
 ) -> Result<Option<Payment>, String> {
     let row = sqlx::query_as::<_, Payment>(
-        "SELECT id, tipo, usuario_remitente, monto, moneda, fecha_correo, estado,
-                observaciones, verificado_en, verified_by, fraud_verdict, fraud_details,
-                email_uid, raw_headers, created_at, updated_at
+        "SELECT payments.id, payments.tipo, payments.usuario_remitente, payments.monto, payments.moneda, payments.fecha_correo, payments.estado,
+                payments.observaciones, payments.verificado_en, payments.verified_by, payments.fraud_verdict, payments.fraud_details,
+                payments.email_uid, payments.raw_headers, payments.hora_correo, payments.created_at, payments.updated_at,
+                COALESCE(users.username, 'Sistema') as verified_by_name
          FROM payments
-         WHERE usuario_remitente = $1
-           AND monto = $2::numeric
-           AND estado = 'disponible'
-           AND fecha_correo >= $3::timestamptz
-           AND fecha_correo <= $4::timestamptz
+         LEFT JOIN users ON payments.verified_by = users.id
+         WHERE payments.usuario_remitente = $1
+           AND payments.monto = $2::numeric
+           AND payments.estado = 'disponible'
+           AND payments.fecha_correo >= $3::timestamptz
+           AND payments.fecha_correo <= $4::timestamptz
          LIMIT 1",
     )
     .bind(usuario)
@@ -355,6 +371,52 @@ pub async fn verify_payment(
     Ok(())
 }
 
+pub async fn quick_verify_payment(
+    pool: &PgPool,
+    payment_id: Uuid,
+    verified_by: Uuid,
+    observaciones: &str,
+) -> Result<Payment, String> {
+    let now = Utc::now();
+    let affected = sqlx::query(
+        "UPDATE payments
+         SET estado = 'verificado',
+             verificado_en = $1,
+             verified_by = $2,
+             observaciones = $3,
+             updated_at = now()
+         WHERE id = $4 AND estado = 'disponible'",
+    )
+    .bind(now)
+    .bind(verified_by)
+    .bind(observaciones)
+    .bind(payment_id)
+    .execute(pool)
+    .await
+    .map_err(|e| format!("DB error al verificar pago: {}", e))?
+    .rows_affected();
+
+    if affected == 0 {
+        return Err("Pago no encontrado o ya verificado".to_string());
+    }
+
+    // Fetch the updated payment with LEFT JOIN for verified_by_name
+    let row = sqlx::query_as::<_, Payment>(
+        "SELECT payments.id, payments.tipo, payments.usuario_remitente, payments.monto, payments.moneda, payments.fecha_correo, payments.estado,
+                payments.observaciones, payments.verificado_en, payments.verified_by, payments.fraud_verdict, payments.fraud_details,
+                payments.email_uid, payments.raw_headers, payments.hora_correo, payments.created_at, payments.updated_at,
+                COALESCE(users.username, 'Sistema') as verified_by_name
+         FROM payments
+         LEFT JOIN users ON payments.verified_by = users.id
+         WHERE payments.id = $1",
+    )
+    .bind(payment_id)
+    .fetch_one(pool)
+    .await
+    .map_err(|e| format!("DB error al leer pago verificado: {}", e))?;
+    Ok(row)
+}
+
 pub async fn insert_payment(
     pool: &PgPool,
     usuario: Option<&str>,
@@ -366,13 +428,14 @@ pub async fn insert_payment(
     fraud_verdict: Option<&str>,
     fraud_details: Option<&serde_json::Value>,
     raw_headers: Option<&serde_json::Value>,
+    hora_correo: Option<&str>,
 ) -> Result<Uuid, String> {
     let estado = if tipo == "deposito" { "por_revisar" } else { "disponible" };
 
     let row = sqlx::query(
         "INSERT INTO payments (tipo, usuario_remitente, monto, moneda, fecha_correo, estado,
-                               email_uid, fraud_verdict, fraud_details, raw_headers)
-         VALUES ($1, $2, $3::numeric, $4, $5::timestamptz, $6::text, $7, $8, $9, $10)
+                               email_uid, fraud_verdict, fraud_details, raw_headers, hora_correo)
+         VALUES ($1, $2, $3::numeric, $4, $5::timestamptz, $6::text, $7, $8, $9, $10, $11::time)
          RETURNING id",
     )
     .bind(tipo)
@@ -385,6 +448,7 @@ pub async fn insert_payment(
     .bind(fraud_verdict)
     .bind(fraud_details)
     .bind(raw_headers)
+    .bind(hora_correo)
     .fetch_one(pool)
     .await
     .map_err(|e| format!("DB error al insertar pago: {}", e))?;

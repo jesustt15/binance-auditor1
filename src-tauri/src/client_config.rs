@@ -30,7 +30,7 @@ impl ClientModeConfig {
 
         if config_file.exists() {
             if let Ok(content) = std::fs::read_to_string(&config_file) {
-                if let Ok(mut config) = serde_json::from_str::<ClientModeConfig>(&content) {
+                if let Ok(config) = serde_json::from_str::<ClientModeConfig>(&content) {
                     if !config.mode.is_empty() {
                         return config;
                     }

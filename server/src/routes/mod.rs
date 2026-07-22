@@ -35,6 +35,7 @@ pub fn build_router(state: SharedState) -> Router {
         .route("/api/payments/by-sender", get(list_payments_by_sender_handler))
         .route("/api/payments/verify", post(verify_payment_handler))
         .route("/api/payments/{id}", get(get_payment_handler))
+        .route("/api/payments/{id}/verify", post(quick_verify_handler))
         // Sync
         .route("/api/sync/status", get(sync_status_handler))
         .route("/api/sync/trigger", post(trigger_sync_handler))
@@ -413,6 +414,55 @@ async fn get_payment_handler(
             Json(json!({"error": e})),
         )
             .into_response(),
+    }
+}
+
+async fn quick_verify_handler(
+    State(state): State<SharedState>,
+    auth: AuthUser,
+    Path(payment_id): Path<Uuid>,
+    Json(req): Json<QuickVerifyRequest>,
+) -> impl IntoResponse {
+    let user_id = Uuid::parse_str(&auth.user_id).unwrap_or_default();
+    let obs = req.observaciones.as_deref().unwrap_or("Verificado manualmente");
+
+    match db::quick_verify_payment(&state.pool, payment_id, user_id, obs).await {
+        Ok(payment) => {
+            // Audit log
+            let _ = db::insert_audit_entry(
+                &state.pool,
+                Some(user_id),
+                "quick_verify",
+                Some("payment"),
+                Some(payment.id),
+                Some(&json!({
+                    "payment_id": payment.id.to_string(),
+                    "observaciones": obs,
+                })),
+                None,
+                None,
+            )
+            .await;
+
+            let response = PaymentResponse::from(payment);
+            (
+                StatusCode::OK,
+                Json(QuickVerifyResponse {
+                    verificado: true,
+                    mensaje: "Pago verificado exitosamente".to_string(),
+                    data: response,
+                }),
+            )
+                .into_response()
+        }
+        Err(e) => {
+            let status = if e.contains("no encontrado") || e.contains("ya verificado") {
+                StatusCode::CONFLICT
+            } else {
+                StatusCode::INTERNAL_SERVER_ERROR
+            };
+            (status, Json(json!({"error": e}))).into_response()
+        }
     }
 }
 

@@ -8,6 +8,8 @@ export interface PagoBinance {
   estado: 'disponible' | 'verificado' | 'por_revisar'
   observaciones: string | null
   verificado_en: string | null
+  hora_correo: string | null
+  verified_by_name: string | null
   creado_en: string
 }
 

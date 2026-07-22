@@ -1,0 +1,20 @@
+# Ignorar todo lo que no es necesario para el build en Docker
+target/
+debug/
+**/target/
+
+# Ignorar archivos de desarrollo
+node_modules/
+dist/
+.env
+*.md
+!INSTALACION.md
+
+# Ignorar tests (no se compilan en release)
+tests/
+
+# Ignorar configuraciones locales
+.vscode/
+.idea/
+*.swp
+*.swo

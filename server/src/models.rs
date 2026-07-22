@@ -186,6 +186,9 @@ pub struct Payment {
     pub fraud_details: Option<serde_json::Value>,
     pub email_uid: Option<i32>,
     pub raw_headers: Option<serde_json::Value>,
+    pub hora_correo: Option<String>,
+    /// Resolved from LEFT JOIN users — username of the verifier, or "Sistema" if NULL
+    pub verified_by_name: Option<String>,
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
 }
@@ -203,6 +206,8 @@ pub struct PaymentResponse {
     pub observaciones: Option<String>,
     pub verificado_en: Option<String>,
     pub fraud_verdict: Option<String>,
+    pub hora_correo: Option<String>,
+    pub verified_by_name: Option<String>,
     pub created_at: String,
 }
 
@@ -225,6 +230,8 @@ impl From<Payment> for PaymentResponse {
             observaciones: p.observaciones,
             verificado_en: p.verificado_en.map(|v| v.to_rfc3339()),
             fraud_verdict: p.fraud_verdict,
+            hora_correo: p.hora_correo,
+            verified_by_name: p.verified_by_name,
             created_at: p.created_at.to_rfc3339(),
         }
     }
@@ -342,6 +349,18 @@ pub struct VerifyPaymentResponse {
     pub mensaje: String,
     pub data: Option<PaymentResponse>,
     pub fraud_verdict: Option<String>,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct QuickVerifyRequest {
+    pub observaciones: Option<String>,
+}
+
+#[derive(Debug, Serialize)]
+pub struct QuickVerifyResponse {
+    pub verificado: bool,
+    pub mensaje: String,
+    pub data: PaymentResponse,
 }
 
 #[derive(Debug, Deserialize)]

@@ -225,6 +225,25 @@ fn get_text_body_recursive(parsed: &mailparse::ParsedMail, depth: usize) -> Stri
 
 // ---- Async IMAP Sync ----
 
+/// Extrae la hora (HH:MM:SS) del Date header de un email,
+/// convirtiendo de UTC a UTC-4 (hora de Caracas).
+///
+/// Acepta formatos RFC 2822 y RFC 3339.
+/// Retorna `None` si el header no se puede parsear.
+fn extract_hora(date_header: &str) -> Option<String> {
+    // Try RFC 3339 first (e.g., "2026-07-22T18:30:00Z")
+    if let Ok(dt) = chrono::DateTime::parse_from_rfc3339(date_header) {
+        let caracas = dt - chrono::TimeDelta::try_hours(4)?;
+        return Some(caracas.format("%H:%M:%S").to_string());
+    }
+    // Try RFC 2822 (e.g., "Tue, 22 Jul 2026 14:30:00 +0000")
+    if let Ok(dt) = chrono::DateTime::parse_from_rfc2822(date_header) {
+        let caracas = dt - chrono::TimeDelta::try_hours(4)?;
+        return Some(caracas.format("%H:%M:%S").to_string());
+    }
+    None
+}
+
 /// Resultado de un sync via IMAP
 pub struct SyncStats {
     pub nuevos: i64,
@@ -458,6 +477,14 @@ pub async fn process_synced_emails(
             .map(|h| h.get_value())
             .unwrap_or_default();
 
+        // Extract hora_correo from Date header
+        let hora_correo = parsed
+            .headers
+            .iter()
+            .find(|h| h.get_key().eq_ignore_ascii_case("Date"))
+            .map(|h| h.get_value())
+            .and_then(|date_val| extract_hora(&date_val));
+
         let text_body = get_text_body(&parsed);
 
         if fraud_result.quarantined {
@@ -518,6 +545,7 @@ pub async fn process_synced_emails(
                 Some(&fraud_result.verdict),
                 Some(&fraud_result.details),
                 raw_headers_json.as_ref(),
+                hora_correo.as_deref(),
             )
             .await?;
 

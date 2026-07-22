@@ -64,4 +64,16 @@ export const api = {
 
   reviewQuarantine: (id: string, decision: string) =>
     invoke<{ success: boolean }>('client_review_quarantine', { id, decision }),
+
+  quickVerify: (id: string) =>
+    invoke<{ verificado: boolean; mensaje: string; data: unknown }>('client_quick_verify_pago', { paymentId: id }),
+
+  listUsers: () =>
+    invoke<Array<{ id: string; username: string; role: string; station_name: string | null; is_active: boolean; created_at: string }>>('client_list_users'),
+
+  createUser: (data: { username: string; password: string; role: string; station_name?: string }) =>
+    invoke<{ id: string; username: string; role: string; station_name: string | null; is_active: boolean; created_at: string }>('client_create_user', data),
+
+  updateUser: (id: string, data: { is_active?: boolean; role?: string; station_name?: string }) =>
+    invoke<{ id: string; username: string; role: string; station_name: string | null; is_active: boolean; created_at: string }>('client_update_user', { userId: id, updates: data }),
 }

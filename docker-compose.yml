@@ -1,0 +1,68 @@
+# =============================================================================
+# Binance Pay Auditor — Docker Compose
+# =============================================================================
+# Levanta PostgreSQL 16 + el servidor Rust en un solo comando.
+#
+# Uso:
+#   1. Copiá server/.env.example a .env y editalo con contraseñas seguras
+#   2. docker compose up -d
+#   3. docker compose logs -f server   (para ver que arrancó bien)
+#
+# El servidor:
+#   - Ejecuta las migraciones automáticamente al arrancar
+#   - Crea el usuario admin por defecto (admin / admin123)
+#   - Escucha en el puerto 8443
+# =============================================================================
+
+services:
+  # ---------------------------------------------------------------------------
+  # PostgreSQL 16 — Base de datos
+  # ---------------------------------------------------------------------------
+  postgres:
+    image: postgres:16-alpine
+    container_name: auditor-postgres
+    restart: always
+    environment:
+      POSTGRES_USER: ${DB_USER:-auditor}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-auditor}
+      POSTGRES_DB: ${DB_NAME:-auditor_db}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    ports:
+      - "127.0.0.1:${DB_PORT:-15432}:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-auditor} -d ${DB_NAME:-auditor_db}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+  # ---------------------------------------------------------------------------
+  # Servidor Rust — API REST + IMAP Sync + Anti-fraude
+  # ---------------------------------------------------------------------------
+  server:
+    build:
+      context: ./server
+      dockerfile: Dockerfile
+    container_name: auditor-server
+    restart: always
+    environment:
+      DATABASE_URL: postgres://${DB_USER:-auditor}:${DB_PASSWORD:-auditor}@postgres:5432/${DB_NAME:-auditor_db}
+      JWT_SECRET: ${JWT_SECRET}
+      LISTEN_ADDR: 0.0.0.0:8443
+      AGE_KEY_PATH: /app/data/age_key.txt
+      IMAP_POLL_INTERVAL_SECS: ${IMAP_POLL_INTERVAL_SECS:-300}
+      RUST_LOG: ${RUST_LOG:-binance_auditor_server=info,tower_http=info}
+    ports:
+      - "${LISTEN_PORT:-8443}:8443"
+    volumes:
+      - server-data:/app/data
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+volumes:
+  pgdata:
+    name: auditor-pgdata
+  server-data:
+    name: auditor-server-data

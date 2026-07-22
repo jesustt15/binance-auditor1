@@ -5,6 +5,7 @@ import Dashboard from './pages/Dashboard'
 import Reports from './pages/Reports'
 import Settings from './pages/Settings'
 import Login from './pages/Login'
+import Users from './pages/Users'
 import type { AuthState } from './types/auth'
 
 // Contexto de autenticacion
@@ -62,6 +63,11 @@ function Nav() {
           {auth.user?.role === 'admin' && (
             <Link to="/ajustes" className={linkClass('/ajustes')}>
               Ajustes
+            </Link>
+          )}
+          {auth.user?.role === 'admin' && (
+            <Link to="/usuarios" className={linkClass('/usuarios')}>
+              Usuarios
             </Link>
           )}
         </div>
@@ -178,6 +184,11 @@ export default function App() {
               <Route path="/ajustes" element={
                 <AuthGuard>
                   {auth.user?.role === 'admin' ? <Settings /> : <Navigate to="/" replace />}
+                </AuthGuard>
+              } />
+              <Route path="/usuarios" element={
+                <AuthGuard>
+                  {auth.user?.role === 'admin' ? <Users /> : <Navigate to="/" replace />}
                 </AuthGuard>
               } />
             </Routes>

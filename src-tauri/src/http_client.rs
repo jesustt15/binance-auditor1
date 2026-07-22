@@ -4,6 +4,7 @@ use std::time::Duration;
 
 /// Cliente HTTP para el modo "client" del Tauri.
 /// Cada comando de Tauri hace proxying a la API REST del servidor.
+#[derive(Clone)]
 pub struct HttpClient {
     client: reqwest::Client,
     base_url: String,
@@ -188,5 +189,70 @@ impl HttpClient {
             "since_date": since_date,
         });
         self.post_json_value("/api/sync/trigger", &body).await
+    }
+
+    pub async fn quick_verify_payment(
+        &self,
+        id: &str,
+    ) -> Result<serde_json::Value, String> {
+        let body = serde_json::json!({
+            "observaciones": serde_json::Value::Null,
+        });
+        self.post_json_value(&format!("/api/payments/{}/verify", id), &body).await
+    }
+
+    pub async fn list_users(
+        &self,
+    ) -> Result<serde_json::Value, String> {
+        self.get("/api/users").await
+    }
+
+    pub async fn create_user(
+        &self,
+        username: &str,
+        password: &str,
+        role: &str,
+        station_name: Option<&str>,
+    ) -> Result<serde_json::Value, String> {
+        let body = serde_json::json!({
+            "username": username,
+            "password": password,
+            "role": role,
+            "station_name": station_name,
+        });
+        self.post_json_value("/api/users", &body).await
+    }
+
+    pub async fn update_user(
+        &self,
+        id: &str,
+        updates: &serde_json::Value,
+    ) -> Result<serde_json::Value, String> {
+        // The server expects PUT, but we use post_json_value which does POST.
+        // We need a put_json_value helper or use put directly.
+        let url = format!("{}/api/users/{}", self.base_url, id);
+        let mut req = self.client.put(&url).json(updates);
+
+        if let Some(token) = &self.jwt_token {
+            req = req.header("Authorization", format!("Bearer {}", token));
+        }
+
+        let resp = req
+            .send()
+            .await
+            .map_err(|e| format!("HTTP PUT error: {}", e))?;
+
+        if resp.status().is_success() {
+            resp.json::<serde_json::Value>()
+                .await
+                .map_err(|e| format!("JSON parse error: {}", e))
+        } else {
+            let status = resp.status();
+            let body = resp
+                .text()
+                .await
+                .unwrap_or_else(|_| "unknown".to_string());
+            Err(format!("HTTP {}: {}", status.as_u16(), body))
+        }
     }
 }

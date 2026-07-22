@@ -4,6 +4,7 @@ import SyncButton from '../components/SyncButton'
 import VerificationForm from '../components/VerificationForm'
 import type { PagoBinance, ImportResult } from '../types'
 import { formatFecha } from '../lib/format'
+import { api } from '../lib/api'
 
 export default function Dashboard() {
   const [pagosBD, setPagosBD] = useState<PagoBinance[] | null>(null)
@@ -26,6 +27,28 @@ export default function Dashboard() {
   const [histSyncing, setHistSyncing] = useState(false)
   const [histResultado, setHistResultado] = useState<string | null>(null)
   const [histError, setHistError] = useState<string | null>(null)
+
+  // Quick verify state
+  const [verificandoId, setVerificandoId] = useState<string | null>(null)
+
+  const quickVerifyPago = async (id: string) => {
+    if (!window.confirm('¿Verificar este pago?')) return
+    setVerificandoId(id)
+    try {
+      const result = await api.quickVerify(id)
+      if (result.verificado) {
+        // Refresh the list to show updated state
+        if (pagosBD) listarPagos()
+      } else {
+        alert(result.mensaje || 'No se pudo verificar el pago')
+      }
+    } catch (err: any) {
+      console.error('Error verificando pago:', err)
+      alert(`Error al verificar: ${err}`)
+    } finally {
+      setVerificandoId(null)
+    }
+  }
 
   const copiarPagos = () => {
     if (!pagosBD || pagosBD.length === 0) return
@@ -376,7 +399,9 @@ export default function Dashboard() {
                     <th className="pb-2 pr-2">Monto</th>
                     <th className="pb-2 pr-2">Moneda</th>
                     <th className="pb-2 pr-2">Fecha Correo</th>
+                    <th className="pb-2 pr-2">Hora</th>
                     <th className="pb-2 pr-2">Estado</th>
+                    <th className="pb-2 pr-2">Acción</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -394,6 +419,7 @@ export default function Dashboard() {
                       <td className="py-2 pr-2 text-slate-300">{p.monto}</td>
                       <td className="py-2 pr-2 text-slate-400">{p.moneda}</td>
                       <td className="py-2 pr-2 text-slate-400">{formatFecha(p.fecha_correo)}</td>
+                      <td className="py-2 pr-2 text-slate-400">{p.hora_correo ?? '—'}</td>
                       <td className="py-2 pr-2">
                         <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${
                           p.estado === 'verificado' ? 'bg-emerald-950 text-emerald-400' :
@@ -402,6 +428,21 @@ export default function Dashboard() {
                         }`}>
                           {p.estado}
                         </span>
+                      </td>
+                      <td className="py-2 pr-2">
+                        {p.estado === 'verificado' ? (
+                          <span className="text-xs text-slate-500">
+                            Verificado por: {p.verified_by_name ?? 'Sistema'}
+                          </span>
+                        ) : (
+                          <button
+                            onClick={() => quickVerifyPago(String(p.id))}
+                            disabled={verificandoId === String(p.id)}
+                            className="px-2 py-1 bg-amber-600 hover:bg-amber-700 disabled:bg-slate-700 text-white rounded text-[11px] font-medium transition-colors"
+                          >
+                            {verificandoId === String(p.id) ? '...' : 'Verificar'}
+                          </button>
+                        )}
                       </td>
                     </tr>
                   ))}
