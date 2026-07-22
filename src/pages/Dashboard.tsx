@@ -13,6 +13,7 @@ export default function Dashboard() {
   const [montoExactoBD, setMontoExactoBD] = useState('')
   const [montoMinBD, setMontoMinBD] = useState('')
   const [montoMaxBD, setMontoMaxBD] = useState('')
+  const [verificandoId, setVerificandoId] = useState<number | null>(null)
   const [paginaBD, setPaginaBD] = useState(1)
   const [porPaginaBD, setPorPaginaBD] = useState(20)
 
@@ -63,6 +64,19 @@ export default function Dashboard() {
       console.error('Error listando pagos:', err)
     } finally {
       setLoadingBD(false)
+    }
+  }
+
+  const quickVerify = async (id: number) => {
+    setVerificandoId(id)
+    try {
+      await invoke('quick_verify_pago', { id })
+      // Refresh the list to show updated estado
+      await listarPagos()
+    } catch (err) {
+      console.error('Error verificando pago:', err)
+    } finally {
+      setVerificandoId(null)
     }
   }
 
@@ -376,7 +390,9 @@ export default function Dashboard() {
                     <th className="pb-2 pr-2">Monto</th>
                     <th className="pb-2 pr-2">Moneda</th>
                     <th className="pb-2 pr-2">Fecha Correo</th>
+                    <th className="pb-2 pr-2">Hora</th>
                     <th className="pb-2 pr-2">Estado</th>
+                    <th className="pb-2 pr-2"></th>
                   </tr>
                 </thead>
                 <tbody>
@@ -394,6 +410,7 @@ export default function Dashboard() {
                       <td className="py-2 pr-2 text-slate-300">{p.monto}</td>
                       <td className="py-2 pr-2 text-slate-400">{p.moneda}</td>
                       <td className="py-2 pr-2 text-slate-400">{formatFecha(p.fecha_correo)}</td>
+                      <td className="py-2 pr-2 text-slate-400 font-mono text-xs">{p.hora_correo ?? '—'}</td>
                       <td className="py-2 pr-2">
                         <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${
                           p.estado === 'verificado' ? 'bg-emerald-950 text-emerald-400' :
@@ -402,6 +419,17 @@ export default function Dashboard() {
                         }`}>
                           {p.estado}
                         </span>
+                      </td>
+                      <td className="py-2 pr-2">
+                        {p.estado !== 'verificado' && (
+                          <button
+                            onClick={() => quickVerify(p.id)}
+                            disabled={verificandoId === p.id}
+                            className="px-2 py-0.5 bg-emerald-600 hover:bg-emerald-700 disabled:bg-slate-600 text-white rounded text-[10px] font-medium transition-colors"
+                          >
+                            {verificandoId === p.id ? '...' : '✓ Verificar'}
+                          </button>
+                        )}
                       </td>
                     </tr>
                   ))}

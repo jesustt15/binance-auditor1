@@ -274,6 +274,27 @@ fn debug_listar_pagos(
     Ok(pagos)
 }
 
+#[derive(Serialize)]
+struct QuickVerifyResult {
+    ok: bool,
+    mensaje: String,
+}
+
+#[tauri::command]
+fn quick_verify_pago(
+    id: i64,
+    state: tauri::State<AppState>,
+) -> Result<QuickVerifyResult, String> {
+    let conn = state.db_conn.lock().map_err(|e| e.to_string())?;
+    let obs = "Verificado manualmente (1 clic).".to_string();
+    db::mark_as_verificado(&conn, id, &obs)
+        .map_err(|e| format!("DB error: {}", e))?;
+    Ok(QuickVerifyResult {
+        ok: true,
+        mensaje: format!("Pago #{} verificado.", id),
+    })
+}
+
 #[derive(Serialize, Clone)]
 struct ImportRowDetail {
     fila: usize,
@@ -799,6 +820,7 @@ fn main() {
             save_settings,
             get_settings,
             debug_listar_pagos,
+            quick_verify_pago,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

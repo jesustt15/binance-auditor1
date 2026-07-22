@@ -11,6 +11,7 @@ pub struct PagoBinance {
     pub monto: f64,
     pub moneda: String,
     pub fecha_correo: String,
+    pub hora_correo: Option<String>,
     pub estado: String,
     pub observaciones: Option<String>,
     pub verificado_en: Option<String>,
@@ -45,6 +46,7 @@ pub fn init_db() -> Result<Connection> {
     let conn = Connection::open(db_path)?;
 
     migrate_schema_v2(&conn)?;
+    migrate_schema_v3(&conn)?;
 
     conn.execute(
         "CREATE TABLE IF NOT EXISTS pagos_binance (
@@ -54,6 +56,7 @@ pub fn init_db() -> Result<Connection> {
             monto REAL NOT NULL,
             moneda TEXT NOT NULL DEFAULT 'USDT',
             fecha_correo TEXT NOT NULL,
+            hora_correo TEXT,
             estado TEXT NOT NULL DEFAULT 'disponible',
             observaciones TEXT,
             verificado_en TEXT,
@@ -127,12 +130,34 @@ fn migrate_schema_v2(conn: &Connection) -> Result<()> {
     Ok(())
 }
 
-pub fn insert_pago(conn: &Connection, usuario: Option<&str>, monto: f64, moneda: &str, fecha: &str, tipo: &str) -> Result<()> {
+fn migrate_schema_v3(conn: &Connection) -> Result<()> {
+    let version: i64 = conn.pragma_query_value(None, "user_version", |row| row.get(0))?;
+    if version >= 3 {
+        return Ok(());
+    }
+
+    // Check if hora_correo column already exists (belt and suspenders)
+    let has_column: bool = conn.query_row(
+        "SELECT COUNT(*) FROM pragma_table_info('pagos_binance') WHERE name='hora_correo'",
+        [],
+        |row| row.get::<_, i64>(0),
+    ).map(|c| c > 0)?;
+
+    if !has_column {
+        conn.execute_batch("ALTER TABLE pagos_binance ADD COLUMN hora_correo TEXT")?;
+    }
+
+    conn.pragma_update(None, "user_version", 3)?;
+
+    Ok(())
+}
+
+pub fn insert_pago(conn: &Connection, usuario: Option<&str>, monto: f64, moneda: &str, fecha: &str, hora: Option<&str>, tipo: &str) -> Result<()> {
     let estado = if tipo == "deposito" { "por_revisar" } else { "disponible" };
     conn.execute(
-        "INSERT INTO pagos_binance (tipo, usuario_remitente, monto, moneda, fecha_correo, estado)
-         VALUES (?1, ?2, ?3, ?4, ?5, ?6)",
-        params![tipo, usuario, monto, moneda, fecha, estado],
+        "INSERT INTO pagos_binance (tipo, usuario_remitente, monto, moneda, fecha_correo, hora_correo, estado)
+         VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)",
+        params![tipo, usuario, monto, moneda, fecha, hora, estado],
     )?;
     Ok(())
 }
@@ -163,7 +188,7 @@ pub fn find_pago_for_verification(
     fecha_fin: &str,
 ) -> Result<Option<PagoBinance>> {
     let mut stmt = conn.prepare(
-        "SELECT id, tipo, usuario_remitente, monto, moneda, fecha_correo, estado,
+        "SELECT id, tipo, usuario_remitente, monto, moneda, fecha_correo, hora_correo, estado,
                 observaciones, verificado_en, creado_en
          FROM pagos_binance
          WHERE usuario_remitente = ?1
@@ -184,10 +209,11 @@ pub fn find_pago_for_verification(
                 monto: row.get(3)?,
                 moneda: row.get(4)?,
                 fecha_correo: row.get(5)?,
-                estado: row.get(6)?,
-                observaciones: row.get(7)?,
-                verificado_en: row.get(8)?,
-                creado_en: row.get(9)?,
+                hora_correo: row.get(6)?,
+                estado: row.get(7)?,
+                observaciones: row.get(8)?,
+                verificado_en: row.get(9)?,
+                creado_en: row.get(10)?,
             })
         },
     ).optional()?;
@@ -208,7 +234,7 @@ pub fn mark_as_verificado(conn: &Connection, id: i64, observaciones: &str) -> Re
 
 pub fn get_all_pagos(conn: &Connection) -> Result<Vec<PagoBinance>> {
     let mut stmt = conn.prepare(
-        "SELECT id, tipo, usuario_remitente, monto, moneda, fecha_correo, estado,
+        "SELECT id, tipo, usuario_remitente, monto, moneda, fecha_correo, hora_correo, estado,
                 observaciones, verificado_en, creado_en
          FROM pagos_binance
          ORDER BY fecha_correo DESC",
@@ -222,10 +248,11 @@ pub fn get_all_pagos(conn: &Connection) -> Result<Vec<PagoBinance>> {
             monto: row.get(3)?,
             moneda: row.get(4)?,
             fecha_correo: row.get(5)?,
-            estado: row.get(6)?,
-            observaciones: row.get(7)?,
-            verificado_en: row.get(8)?,
-            creado_en: row.get(9)?,
+            hora_correo: row.get(6)?,
+            estado: row.get(7)?,
+            observaciones: row.get(8)?,
+            verificado_en: row.get(9)?,
+            creado_en: row.get(10)?,
         })
     })?.collect::<Result<Vec<_>>>()?;
 
@@ -241,7 +268,7 @@ pub fn get_reports(
     monto_max: Option<f64>,
 ) -> Result<Vec<PagoBinance>> {
     let mut sql = String::from(
-        "SELECT id, tipo, usuario_remitente, monto, moneda, fecha_correo, estado,
+        "SELECT id, tipo, usuario_remitente, monto, moneda, fecha_correo, hora_correo, estado,
                 observaciones, verificado_en, creado_en
          FROM pagos_binance
          WHERE fecha_correo >= ?1 AND fecha_correo <= ?2",
@@ -279,10 +306,11 @@ pub fn get_reports(
             monto: row.get(3)?,
             moneda: row.get(4)?,
             fecha_correo: row.get(5)?,
-            estado: row.get(6)?,
-            observaciones: row.get(7)?,
-            verificado_en: row.get(8)?,
-            creado_en: row.get(9)?,
+            hora_correo: row.get(6)?,
+            estado: row.get(7)?,
+            observaciones: row.get(8)?,
+            verificado_en: row.get(9)?,
+            creado_en: row.get(10)?,
         })
     })?.collect::<Result<Vec<_>>>()?;
 
@@ -301,7 +329,7 @@ pub fn get_reports_by_sender(
     let pattern = format!("%{}%", remitente);
 
     let mut sql = String::from(
-        "SELECT id, tipo, usuario_remitente, monto, moneda, fecha_correo, estado,
+        "SELECT id, tipo, usuario_remitente, monto, moneda, fecha_correo, hora_correo, estado,
                 observaciones, verificado_en, creado_en
          FROM pagos_binance
          WHERE fecha_correo >= ?1 AND fecha_correo <= ?2
@@ -341,10 +369,11 @@ pub fn get_reports_by_sender(
             monto: row.get(3)?,
             moneda: row.get(4)?,
             fecha_correo: row.get(5)?,
-            estado: row.get(6)?,
-            observaciones: row.get(7)?,
-            verificado_en: row.get(8)?,
-            creado_en: row.get(9)?,
+            hora_correo: row.get(6)?,
+            estado: row.get(7)?,
+            observaciones: row.get(8)?,
+            verificado_en: row.get(9)?,
+            creado_en: row.get(10)?,
         })
     })?.collect::<Result<Vec<_>>>()?;
 
@@ -365,8 +394,8 @@ pub fn export_to_excel(pagos: &[PagoBinance], file_path: &str) -> std::result::R
     let mut workbook = Workbook::new();
     let worksheet = workbook.add_worksheet();
 
-    // Headers — Tipo, Remitente, Monto, Moneda, Fecha, Estado
-    let headers = ["Tipo", "Usuario Remitente", "Monto", "Moneda", "Fecha Correo", "Estado"];
+    // Headers — Tipo, Remitente, Monto, Moneda, Fecha, Hora, Estado
+    let headers = ["Tipo", "Usuario Remitente", "Monto", "Moneda", "Fecha Correo", "Hora", "Estado"];
     let header_format = Format::new().set_bold().set_background_color(Color::RGB(0x1E293B)).set_font_color(Color::RGB(0xFBBF24));
 
     for (col, header) in headers.iter().enumerate() {
@@ -388,6 +417,7 @@ pub fn export_to_excel(pagos: &[PagoBinance], file_path: &str) -> std::result::R
         worksheet.write(row, 2, pago.monto).map_err(|e| format!("Excel write error: {}", e))?;
         worksheet.write(row, 3, &pago.moneda).map_err(|e| format!("Excel write error: {}", e))?;
         worksheet.write(row, 4, &format_fecha_ddmmyyyy(&pago.fecha_correo)).map_err(|e| format!("Excel write error: {}", e))?;
+        worksheet.write(row, 5, pago.hora_correo.as_deref().unwrap_or("—")).map_err(|e| format!("Excel write error: {}", e))?;
 
         // Color-coded estado
         let estado_fmt = match pago.estado.as_str() {
@@ -396,7 +426,7 @@ pub fn export_to_excel(pagos: &[PagoBinance], file_path: &str) -> std::result::R
             "por_revisar" => &por_revisar_fmt,
             _ => &disponible_fmt,
         };
-        worksheet.write_with_format(row, 5, &pago.estado, estado_fmt)
+        worksheet.write_with_format(row, 6, &pago.estado, estado_fmt)
             .map_err(|e| format!("Excel write error: {}", e))?;
     }
 
@@ -406,7 +436,8 @@ pub fn export_to_excel(pagos: &[PagoBinance], file_path: &str) -> std::result::R
     worksheet.set_column_width(2, 15.0).map_err(|e| format!("Excel column width error: {}", e))?;
     worksheet.set_column_width(3, 10.0).map_err(|e| format!("Excel column width error: {}", e))?;
     worksheet.set_column_width(4, 30.0).map_err(|e| format!("Excel column width error: {}", e))?;
-    worksheet.set_column_width(5, 15.0).map_err(|e| format!("Excel column width error: {}", e))?;
+    worksheet.set_column_width(5, 10.0).map_err(|e| format!("Excel column width error: {}", e))?;
+    worksheet.set_column_width(6, 15.0).map_err(|e| format!("Excel column width error: {}", e))?;
 
     workbook.save(file_path).map_err(|e| format!("Excel save error: {}", e))?;
 
@@ -428,6 +459,7 @@ mod tests {
                 monto REAL NOT NULL,
                 moneda TEXT NOT NULL DEFAULT 'USDT',
                 fecha_correo TEXT NOT NULL,
+                hora_correo TEXT,
                 estado TEXT NOT NULL DEFAULT 'disponible',
                 observaciones TEXT,
                 verificado_en TEXT,
@@ -535,7 +567,7 @@ mod tests {
     #[test]
     fn insert_pago_sets_estado_por_revisar_for_deposito() {
         let conn = setup_test_db();
-        insert_pago(&conn, None, 100.0, "USDT", "2026-07-15", "deposito").unwrap();
+        insert_pago(&conn, None, 100.0, "USDT", "2026-07-15", None, "deposito").unwrap();
 
         let mut stmt = conn.prepare("SELECT tipo, usuario_remitente, estado FROM pagos_binance").unwrap();
         let row = stmt.query_row([], |row| {
@@ -549,7 +581,7 @@ mod tests {
     #[test]
     fn insert_pago_sets_estado_disponible_for_pago() {
         let conn = setup_test_db();
-        insert_pago(&conn, Some("alice"), 50.0, "USDT", "2026-07-15", "pago").unwrap();
+        insert_pago(&conn, Some("alice"), 50.0, "USDT", "2026-07-15", None, "pago").unwrap();
 
         let mut stmt = conn.prepare("SELECT tipo, usuario_remitente, estado FROM pagos_binance").unwrap();
         let row = stmt.query_row([], |row| {

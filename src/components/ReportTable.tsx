@@ -54,6 +54,7 @@ export default function ReportTable({ pagos }: Props) {
               <th className="text-left py-2 px-3">Usuario</th>
               <th className="text-right py-2 px-3">Monto</th>
               <th className="text-left py-2 px-3">Fecha Correo</th>
+              <th className="text-left py-2 px-3">Hora</th>
               <th className="text-center py-2 px-3">Estado</th>
               <th className="text-left py-2 px-3">Observaciones</th>
             </tr>
@@ -77,6 +78,9 @@ export default function ReportTable({ pagos }: Props) {
                 </td>
                 <td className="py-2 px-3 text-slate-400 text-xs">
                   {formatFecha(pago.fecha_correo)}
+                </td>
+                <td className="py-2 px-3 text-slate-400 text-xs font-mono">
+                  {pago.hora_correo ?? '—'}
                 </td>
                 <td className="py-2 px-3 text-center">
                   <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${

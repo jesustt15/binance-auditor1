@@ -26,6 +26,7 @@ pub struct BinanceEmailData {
     pub monto: f64,
     pub moneda: String,
     pub fecha: String,
+    pub hora: Option<String>,
     pub tipo: String,
 }
 
@@ -132,14 +133,18 @@ fn extract_deposit_data(text: &str, subject: &str) -> Option<BinanceEmailData> {
         }
     }
 
-    // Extract fecha from subject: "...- 2026-07-15 18:50:21 (UTC)"
+    // Extract fecha and hora from subject: "...- 2026-07-15 18:50:21 (UTC)"
     let mut fecha: Option<String> = None;
+    let mut hora: Option<String> = None;
     if let Some(dash_pos) = subject.rfind(" - ") {
         let date_part = subject[dash_pos + 3..].trim();
         let cleaned = date_part.replace("(UTC)", "").trim().to_string();
         if let Ok(naive) = chrono::NaiveDateTime::parse_from_str(&cleaned, "%Y-%m-%d %H:%M:%S") {
             let dt = chrono::DateTime::<chrono::Utc>::from_naive_utc_and_offset(naive, chrono::Utc);
             fecha = Some(dt.to_rfc3339());
+            // Convert from UTC to Caracas (UTC-4)
+            let caracas_time = naive - chrono::Duration::hours(4);
+            hora = Some(caracas_time.format("%H:%M:%S").to_string());
         }
     }
 
@@ -149,6 +154,7 @@ fn extract_deposit_data(text: &str, subject: &str) -> Option<BinanceEmailData> {
             monto: m,
             moneda: c,
             fecha: f,
+            hora,
             tipo: "deposito".to_string(),
         }),
         _ => {
@@ -177,6 +183,7 @@ fn extract_binance_data(text: &str, subject: &str) -> Option<BinanceEmailData> {
     let mut monto: Option<f64> = None;
     let mut moneda: Option<String> = None;
     let mut fecha: Option<String> = None;
+    let mut hora_raw: Option<String> = None;
 
     let time_labels = ["time:", "hora:", "fecha:", "fecha y hora:"];
     let from_labels = ["from:", "de:", "remitente:", "enviado por:"];
@@ -187,7 +194,9 @@ fn extract_binance_data(text: &str, subject: &str) -> Option<BinanceEmailData> {
 
         if is_label(trimmed, &time_labels) {
             if let Some(next_line) = lines.get(i + 1) {
-                fecha = parse_time_field(next_line.trim());
+                let raw_time = next_line.trim();
+                fecha = parse_time_field(raw_time);
+                hora_raw = extract_hora(raw_time);
             }
         } else if is_label(trimmed, &from_labels) {
             if let Some(next_line) = lines.get(i + 1) {
@@ -209,14 +218,27 @@ fn extract_binance_data(text: &str, subject: &str) -> Option<BinanceEmailData> {
         "pago".to_string()
     };
 
+    // Fallback: if no Time: label found in body, try subject
+    // (e.g. "[Binance] Pago recibido correctamente - 2026-07-22 10:15:33 (UTC)")
+    if fecha.is_none() {
+        if let Some(dash_pos) = subject.rfind(" - ") {
+            let raw_time = subject[dash_pos + 3..].trim();
+            fecha = parse_time_field(raw_time);
+            hora_raw = extract_hora(raw_time);
+        }
+    }
+
     match (monto, moneda, fecha) {
-        (Some(m), Some(c), Some(f)) => Some(BinanceEmailData {
-            usuario,
-            monto: m,
-            moneda: c,
-            fecha: f,
-            tipo,
-        }),
+        (Some(m), Some(c), Some(f)) => {
+            Some(BinanceEmailData {
+                usuario,
+                monto: m,
+                moneda: c,
+                fecha: f,
+                hora: hora_raw,
+                tipo,
+            })
+        }
         _ => None,
     }
 }
@@ -226,6 +248,17 @@ fn parse_time_field(s: &str) -> Option<String> {
     let naive = chrono::NaiveDateTime::parse_from_str(&cleaned, "%Y-%m-%d %H:%M:%S").ok()?;
     let datetime = chrono::DateTime::<chrono::Utc>::from_naive_utc_and_offset(naive, chrono::Utc);
     Some(datetime.to_rfc3339())
+}
+
+/// Extracts just the time portion (HH:MM:SS) from a datetime string like "2026-07-15 10:30:00"
+/// or "2026-07-15 10:30:00 (UTC)". Converts from UTC to Caracas time (UTC-4).
+/// Returns None if parsing fails.
+fn extract_hora(s: &str) -> Option<String> {
+    let cleaned = s.replace("(UTC)", "").trim().to_string();
+    let naive = chrono::NaiveDateTime::parse_from_str(&cleaned, "%Y-%m-%d %H:%M:%S").ok()?;
+    // Convert from UTC to Caracas (UTC-4)
+    let caracas_time = naive - chrono::Duration::hours(4);
+    Some(caracas_time.format("%H:%M:%S").to_string())
 }
 
 fn parse_amount_field(s: &str) -> Option<(f64, String)> {
@@ -403,16 +436,17 @@ fn sync_emails_internal(
 
                 if let Some(data) = extract_binance_data(&text_body, &subject) {
                     eprintln!(
-                        "[IMAP] {} detectado: usuario='{}' monto={} moneda='{}' fecha='{}'",
+                        "[IMAP] {} detectado: usuario='{}' monto={} moneda='{}' fecha='{}' hora='{}'",
                         data.tipo,
                         data.usuario.as_deref().unwrap_or("N/A"),
-                        data.monto, data.moneda, data.fecha
+                        data.monto, data.moneda, data.fecha,
+                        data.hora.as_deref().unwrap_or("N/A")
                     );
                     let exists = db::pago_exists(conn, data.usuario.as_deref(), data.monto, &data.fecha)
                         .map_err(|e| format!("DB check error: {}", e))?;
 
                     if !exists {
-                        db::insert_pago(conn, data.usuario.as_deref(), data.monto, &data.moneda, &data.fecha, &data.tipo)
+                        db::insert_pago(conn, data.usuario.as_deref(), data.monto, &data.moneda, &data.fecha, data.hora.as_deref(), &data.tipo)
                             .map_err(|e| format!("DB insert error: {}", e))?;
                         nuevos += 1;
                     } else {
@@ -489,6 +523,8 @@ mod tests {
         assert_eq!(result.monto, 100.0);
         assert_eq!(result.moneda, "USDT");
         assert!(!result.fecha.is_empty());
+        // Deposit should have hora from subject (UTC-4)
+        assert_eq!(result.hora.as_deref(), Some("06:30:00"));
     }
 
     // Deposit without accent in subject
@@ -513,6 +549,9 @@ mod tests {
         assert_eq!(result.usuario.as_deref(), Some("alice@example.com"));
         assert_eq!(result.monto, 50.0);
         assert_eq!(result.moneda, "USDT");
+        assert!(!result.fecha.is_empty());
+        // Payment with sender should also have hora (UTC-4)
+        assert_eq!(result.hora.as_deref(), Some("06:30:00"));
     }
 
     // Task 4.2: Parser requires amount, currency, and date
@@ -561,5 +600,20 @@ mod tests {
         assert_eq!(result.usuario, None);
         assert_eq!(result.monto, 785.14);
         assert_eq!(result.moneda, "USDT");
+    }
+
+    // Transfer without sender: time in subject, no Time: label in body
+    #[test]
+    fn extract_transferencia_sin_usuario_hora_en_subject() {
+        let body = "Amount:\n100.00 USDT\n";
+        let subject = "[Binance] Pago recibido correctamente - 2026-07-22 10:15:33 (UTC)";
+        let result = extract_binance_data(body, subject).unwrap();
+        assert_eq!(result.tipo, "pago");
+        assert_eq!(result.usuario, None);
+        assert_eq!(result.monto, 100.0);
+        assert_eq!(result.moneda, "USDT");
+        assert!(!result.fecha.is_empty());
+        // Transfer without user should have hora extracted from subject (UTC-4)
+        assert_eq!(result.hora.as_deref(), Some("06:15:33"));
     }
 }

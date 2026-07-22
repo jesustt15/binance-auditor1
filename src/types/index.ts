@@ -5,6 +5,7 @@ export interface PagoBinance {
   monto: number
   moneda: string
   fecha_correo: string
+  hora_correo: string | null
   estado: 'disponible' | 'verificado' | 'por_revisar'
   observaciones: string | null
   verificado_en: string | null
