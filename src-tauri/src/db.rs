@@ -70,7 +70,47 @@ pub fn init_db() -> Result<Connection> {
         [],
     )?;
 
+    let _ = backfill_hora_correo(&conn);
+
     Ok(conn)
+}
+
+fn extract_hora_from_stored_date(fecha: &str) -> Option<String> {
+    // 1. Try RFC3339 (e.g., "2026-07-22T14:15:33+00:00")
+    if let Ok(dt) = chrono::DateTime::parse_from_rfc3339(fecha) {
+        let utc_dt = dt.with_timezone(&chrono::Utc);
+        let caracas_time = utc_dt.naive_utc() - chrono::Duration::hours(4);
+        return Some(caracas_time.format("%H:%M:%S").to_string());
+    }
+    // 2. Try "%Y-%m-%d %H:%M:%S"
+    let cleaned = fecha.replace("(UTC)", "").trim().to_string();
+    if let Ok(naive) = chrono::NaiveDateTime::parse_from_str(&cleaned, "%Y-%m-%d %H:%M:%S") {
+        let caracas_time = naive - chrono::Duration::hours(4);
+        return Some(caracas_time.format("%H:%M:%S").to_string());
+    }
+    // 3. Try "%Y-%m-%dT%H:%M:%S"
+    if let Ok(naive) = chrono::NaiveDateTime::parse_from_str(&cleaned, "%Y-%m-%dT%H:%M:%S") {
+        let caracas_time = naive - chrono::Duration::hours(4);
+        return Some(caracas_time.format("%H:%M:%S").to_string());
+    }
+    None
+}
+
+fn backfill_hora_correo(conn: &Connection) -> Result<()> {
+    let mut stmt = conn.prepare("SELECT id, fecha_correo FROM pagos_binance WHERE hora_correo IS NULL OR hora_correo = ''")?;
+    let rows = stmt.query_map([], |row| {
+        Ok((row.get::<_, i64>(0)?, row.get::<_, String>(1)?))
+    })?.collect::<Result<Vec<_>>>()?;
+
+    for (id, fecha_correo) in rows {
+        if let Some(hora) = extract_hora_from_stored_date(&fecha_correo) {
+            conn.execute(
+                "UPDATE pagos_binance SET hora_correo = ?1 WHERE id = ?2",
+                params![hora, id],
+            )?;
+        }
+    }
+    Ok(())
 }
 
 fn migrate_schema_v2(conn: &Connection) -> Result<()> {
@@ -643,5 +683,27 @@ mod tests {
         // Verify user_version
         let version: i64 = conn.pragma_query_value(None, "user_version", |row| row.get(0)).unwrap();
         assert_eq!(version, 2);
+    }
+
+    #[test]
+    fn test_backfill_hora_correo() {
+        let conn = setup_test_db();
+        // Insert a record with NULL hora_correo and a fecha_correo
+        conn.execute(
+            "INSERT INTO pagos_binance (tipo, usuario_remitente, monto, moneda, fecha_correo, hora_correo, estado)
+             VALUES ('pago', 'alice', 50.0, 'USDT', '2026-07-22T14:15:33+00:00', NULL, 'disponible')",
+            [],
+        ).unwrap();
+
+        // Run the backfill
+        backfill_hora_correo(&conn).unwrap();
+
+        // Verify the hour was populated (Caracas time UTC-4: 14:15:33 -> 10:15:33)
+        let hora: String = conn.query_row(
+            "SELECT hora_correo FROM pagos_binance WHERE usuario_remitente = 'alice'",
+            [],
+            |row| row.get(0),
+        ).unwrap();
+        assert_eq!(hora, "10:15:33");
     }
 }
