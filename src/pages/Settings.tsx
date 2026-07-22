@@ -1,14 +1,19 @@
 import { useState, useEffect } from 'react'
 import { invoke } from '@tauri-apps/api/core'
+import { useAuth } from '../App'
+import { api } from '../lib/api'
 import type { AppSettings } from '../types'
 
 export default function Settings() {
+  const { auth } = useAuth()
   const [imapUser, setImapUser] = useState('')
   const [imapPassword, setImapPassword] = useState('')
   const [saved, setSaved] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
   const [appMode, setAppMode] = useState<string>('standalone')
+
+  const isAdmin = auth.user?.role === 'admin'
 
   useEffect(() => {
     // Detect app mode first
@@ -24,7 +29,17 @@ export default function Settings() {
         setImapPassword(settings.imap_password)
       })
       .catch(() => {})
-      .finally(() => setLoading(false))
+
+    // In client mode, fetch server IMAP config if admin
+    if (auth.user?.role === 'admin') {
+      api.getImapConfig()
+        .then((cfg) => {
+          if (cfg.email) setImapUser(cfg.email)
+        })
+        .catch(() => {})
+    }
+
+    setLoading(false)
   }, [])
 
   const handleSave = async () => {
@@ -60,7 +75,7 @@ export default function Settings() {
     )
   }
 
-  // Client mode: show notification instead of local IMAP config
+  // Client mode: show IMAP config (editable for admin)
   if (appMode === 'client') {
     return (
       <div className="max-w-2xl mx-auto">
@@ -69,53 +84,64 @@ export default function Settings() {
           <p className="text-slate-400 text-sm">Modo Cliente — conectado al servidor central</p>
         </div>
 
-        <div className="bg-slate-800 p-6 rounded-xl border border-slate-700 space-y-4">
-          <div className="p-4 bg-blue-950/50 border border-blue-500/30 rounded-lg">
-            <p className="text-blue-300 text-sm font-medium">
-              Modo Cliente Activo
-            </p>
-            <p className="text-blue-400/70 text-xs mt-1">
-              Las credenciales IMAP se configuran centralmente en el servidor por el administrador.
-              No es necesario configurar IMAP en esta estacion.
-            </p>
-          </div>
+        <div className="bg-slate-800 p-6 rounded-xl border border-slate-700 space-y-6">
+          {isAdmin ? (
+            <>
+              <div>
+                <label className="block text-sm font-medium text-slate-300 mb-2">
+                  Correo de Gmail (IMAP)
+                </label>
+                <input
+                  type="email"
+                  value={imapUser}
+                  onChange={(e) => setImapUser(e.target.value)}
+                  className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-amber-500"
+                  placeholder="admin@correo.com"
+                />
+              </div>
 
-          <div>
-            <label className="block text-sm font-medium text-slate-300 mb-2">
-              Correo de Gmail (IMAP)
-            </label>
-            <input
-              type="email"
-              value={imapUser}
-              onChange={(e) => setImapUser(e.target.value)}
-              className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-amber-500 opacity-50"
-              placeholder="Configurado por Admin"
-              disabled
-            />
-            <p className="mt-1 text-xs text-slate-500">
-              Solo el administrador del servidor puede modificar las credenciales IMAP.
-            </p>
-          </div>
+              <div>
+                <label className="block text-sm font-medium text-slate-300 mb-2">
+                  Contrasena de aplicacion (16 caracteres)
+                </label>
+                <input
+                  type="password"
+                  value={imapPassword}
+                  onChange={(e) => setImapPassword(e.target.value)}
+                  className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-amber-500"
+                  placeholder="abcd efgh ijkl mnop"
+                />
+                <p className="mt-2 text-xs text-slate-500">
+                  Genera una "Contrasena de aplicacion" en{' '}
+                  <a href="https://myaccount.google.com/apppasswords" target="_blank" className="text-amber-400 hover:underline ml-1">
+                    Google Account &rarr; App Passwords
+                  </a>
+                </p>
+              </div>
 
-          <div>
-            <label className="block text-sm font-medium text-slate-300 mb-2">
-              Contrasena de aplicacion
-            </label>
-            <input
-              type="password"
-              value={imapPassword}
-              onChange={(e) => setImapPassword(e.target.value)}
-              className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-amber-500 opacity-50"
-              placeholder="••••••••••••••••"
-              disabled
-            />
-          </div>
+              <button
+                onClick={handleSave}
+                className="bg-amber-500 hover:bg-amber-600 text-slate-950 font-medium px-6 py-2 rounded-lg text-sm transition-colors"
+              >
+                Guardar en Servidor
+              </button>
 
-          <div className="p-3 bg-amber-950/50 border border-amber-500/30 rounded-lg">
-            <p className="text-amber-300 text-xs">
-              Para cambiar las credenciales IMAP, contacta al administrador del servidor.
-            </p>
-          </div>
+              {saved && (
+                <p className="text-sm text-emerald-400">Credenciales IMAP guardadas en el servidor.</p>
+              )}
+            </>
+          ) : (
+            <div className="p-4 bg-blue-950/50 border border-blue-500/30 rounded-lg">
+              <p className="text-blue-300 text-sm font-medium">Modo Cliente Activo</p>
+              <p className="text-blue-400/70 text-xs mt-1">
+                Las credenciales IMAP se configuran centralmente en el servidor por el administrador.
+              </p>
+            </div>
+          )}
+
+          {error && (
+            <p className="text-sm text-rose-400">Error al guardar: {error}</p>
+          )}
         </div>
       </div>
     )

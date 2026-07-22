@@ -24,6 +24,9 @@ export const api = {
       user: { id: string; username: string; role: string; station_name: string | null; is_active: boolean; created_at: string }
     }>('client_login', { username, password }),
 
+  setToken: (token: string) =>
+    invoke<void>('client_set_token', { token }),
+
   verifyPayment: (usuarioEmpresa: string, montoEmpresa: number, fechaEmpresa: string) =>
     invoke<ApiResponse>('client_verify_payment', {
       usuarioEmpresa,
@@ -31,10 +34,19 @@ export const api = {
       fechaEmpresa,
     }),
 
-  listPayments: (desde?: string, hasta?: string) =>
+  listPayments: (params?: {
+    desde?: string
+    hasta?: string
+    monto_exacto?: number
+    monto_min?: number
+    monto_max?: number
+  }) =>
     invoke<unknown[]>('client_list_payments', {
-      desde: desde || null,
-      hasta: hasta || null,
+      desde: params?.desde || null,
+      hasta: params?.hasta || null,
+      montoExacto: params?.monto_exacto ?? null,
+      montoMin: params?.monto_min ?? null,
+      montoMax: params?.monto_max ?? null,
     }),
 
   triggerSync: (mode?: string, sinceDate?: string) =>

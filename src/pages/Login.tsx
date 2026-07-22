@@ -1,5 +1,5 @@
 import { useState, type FormEvent } from 'react'
-import { invoke } from '@tauri-apps/api/core'
+import { api } from '../lib/api'
 import type { AuthState } from '../types/auth'
 
 interface Props {
@@ -18,19 +18,10 @@ export default function Login({ onLogin }: Props) {
     setLoading(true)
 
     try {
-      // Invoke login through Tauri (which proxies to server in client mode)
-      const result = await invoke<{
-        token: string
-        refresh_token: string
-        user: {
-          id: string
-          username: string
-          role: 'admin' | 'cashier'
-          station_name: string | null
-          is_active: boolean
-          created_at: string
-        }
-      }>('client_login', { username, password })
+      const result = await api.login(username, password)
+
+      // Set the token on the HttpClient so subsequent requests are authenticated
+      await api.setToken(result.token)
 
       onLogin({
         token: result.token,

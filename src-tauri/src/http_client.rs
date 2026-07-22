@@ -11,6 +11,7 @@ pub struct HttpClient {
     jwt_token: Option<String>,
 }
 
+#[allow(dead_code)]
 impl HttpClient {
     pub fn new(base_url: &str) -> Result<Self, String> {
         let client = reqwest::Client::builder()
@@ -146,16 +147,29 @@ impl HttpClient {
         &self,
         desde: Option<&str>,
         hasta: Option<&str>,
+        monto_exacto: Option<f64>,
+        monto_min: Option<f64>,
+        monto_max: Option<f64>,
     ) -> Result<serde_json::Value, String> {
         let mut query = String::new();
         if let Some(d) = desde {
             query.push_str(&format!("desde={}", d));
         }
         if let Some(h) = hasta {
-            if !query.is_empty() {
-                query.push('&');
-            }
+            if !query.is_empty() { query.push('&'); }
             query.push_str(&format!("hasta={}", h));
+        }
+        if let Some(m) = monto_exacto {
+            if !query.is_empty() { query.push('&'); }
+            query.push_str(&format!("monto_exacto={}", m));
+        }
+        if let Some(m) = monto_min {
+            if !query.is_empty() { query.push('&'); }
+            query.push_str(&format!("monto_min={}", m));
+        }
+        if let Some(m) = monto_max {
+            if !query.is_empty() { query.push('&'); }
+            query.push_str(&format!("monto_max={}", m));
         }
         let path = if query.is_empty() {
             "/api/payments".to_string()

@@ -72,15 +72,13 @@ export default function Dashboard() {
     setLoadingBD(true)
     setPaginaBD(1)
     try {
-      const args: Record<string, unknown> = {}
-      if (desdeBD && hastaBD) {
-        args.desde = desdeBD
-        args.hasta = hastaBD
-      }
-      if (montoExactoBD) args.montoExacto = parseFloat(montoExactoBD)
-      if (montoMinBD) args.montoMin = parseFloat(montoMinBD)
-      if (montoMaxBD) args.montoMax = parseFloat(montoMaxBD)
-      const pagos = await invoke<PagoBinance[]>('debug_listar_pagos', args)
+      const pagos = await api.listPayments({
+        desde: desdeBD || undefined,
+        hasta: hastaBD || undefined,
+        monto_exacto: montoExactoBD ? parseFloat(montoExactoBD) : undefined,
+        monto_min: montoMinBD ? parseFloat(montoMinBD) : undefined,
+        monto_max: montoMaxBD ? parseFloat(montoMaxBD) : undefined,
+      }) as unknown as PagoBinance[]
       setPagosBD(pagos)
     } catch (err) {
       console.error('Error listando pagos:', err)

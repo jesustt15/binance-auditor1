@@ -60,6 +60,17 @@ async fn client_login(
 }
 
 #[tauri::command]
+fn client_set_token(
+    token: String,
+    state: tauri::State<'_, AppState>,
+) -> Result<(), String> {
+    let mut guard = state.http_client.lock().map_err(|e| e.to_string())?;
+    let client = guard.as_mut().ok_or("Cliente HTTP no inicializado")?;
+    client.set_token(token);
+    Ok(())
+}
+
+#[tauri::command]
 async fn client_verify_payment(
     usuario_empresa: String,
     monto_empresa: f64,
@@ -77,13 +88,16 @@ async fn client_verify_payment(
 async fn client_list_payments(
     desde: Option<String>,
     hasta: Option<String>,
+    monto_exacto: Option<f64>,
+    monto_min: Option<f64>,
+    monto_max: Option<f64>,
     state: tauri::State<'_, AppState>,
 ) -> Result<serde_json::Value, String> {
     let client = {
         let guard = state.http_client.lock().map_err(|e| e.to_string())?;
         guard.as_ref().ok_or("Cliente HTTP no inicializado")?.clone()
     };
-    client.list_payments(desde.as_deref(), hasta.as_deref()).await
+    client.list_payments(desde.as_deref(), hasta.as_deref(), monto_exacto, monto_min, monto_max).await
 }
 
 #[tauri::command]
@@ -728,6 +742,7 @@ fn main() {
             get_app_mode,
             // Client mode commands
             client_login,
+            client_set_token,
             client_verify_payment,
             client_list_payments,
             client_trigger_sync,
