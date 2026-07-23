@@ -207,7 +207,7 @@ export default function Dashboard() {
               type="date"
               value={histFecha}
               onChange={(e) => setHistFecha(e.target.value)}
-              className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-amber-500"
+              className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm text-slate-300 focus:outline-none focus:border-amber-500"
             />
           </div>
           <button

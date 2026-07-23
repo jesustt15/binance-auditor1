@@ -40,6 +40,9 @@ pub fn build_router(state: SharedState) -> Router {
         .route("/api/sync/status", get(sync_status_handler))
         .route("/api/sync/trigger", post(trigger_sync_handler))
         // IMAP credentials (admin)
+        // Change password (authenticated)
+        .route("/api/auth/change-password", post(change_password_handler))
+        // IMAP
         .route("/api/config/imap", get(get_imap_config_handler).put(put_imap_config_handler))
         // Import
         .route("/api/import/csv", post(import_csv_handler))
@@ -1383,6 +1386,8 @@ async fn create_user_handler(
         }
     };
 
+    let must_change_password = req.role == "cashier";
+
     match db::create_user(
         &state.pool,
         &req.username,
@@ -1390,6 +1395,7 @@ async fn create_user_handler(
         &req.role,
         req.company_group.as_deref(),
         req.station_name.as_deref(),
+        must_change_password,
     )
     .await
     {
@@ -1437,6 +1443,7 @@ async fn update_user_handler(
         req.is_active,
         req.company_group.as_deref(),
         req.station_name.as_deref(),
+        req.must_change_password,
     )
     .await
     {
@@ -1455,6 +1462,102 @@ async fn update_user_handler(
             .await;
             let public: UserPublic = user.into();
             (StatusCode::OK, Json(public)).into_response()
+        }
+        Err(e) => (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            Json(json!({"error": e})),
+        )
+            .into_response(),
+    }
+}
+
+async fn change_password_handler(
+    State(state): State<SharedState>,
+    auth: AuthUser,
+    Json(req): Json<ChangePasswordRequest>,
+) -> impl IntoResponse {
+    let user_id = match Uuid::parse_str(&auth.user_id) {
+        Ok(id) => id,
+        Err(_) => {
+            return (
+                StatusCode::BAD_REQUEST,
+                Json(json!({"error": "ID de usuario invalido"})),
+            )
+                .into_response();
+        }
+    };
+
+    // Verify current password
+    let user = match db::find_user_by_id(&state.pool, user_id).await {
+        Ok(Some(u)) => u,
+        Ok(None) => {
+            return (
+                StatusCode::NOT_FOUND,
+                Json(json!({"error": "Usuario no encontrado"})),
+            )
+                .into_response();
+        }
+        Err(e) => {
+            return (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(json!({"error": e})),
+            )
+                .into_response();
+        }
+    };
+
+    // Validate current password
+    match auth::verify_password(&req.current_password, &user.password_hash) {
+        Ok(true) => {}
+        _ => {
+            return (
+                StatusCode::UNAUTHORIZED,
+                Json(json!({"error": "La contraseña actual no es correcta"})),
+            )
+                .into_response();
+        }
+    }
+
+    // Validate new password length
+    if req.new_password.len() < 6 {
+        return (
+            StatusCode::BAD_REQUEST,
+            Json(json!({"error": "La nueva contraseña debe tener al menos 6 caracteres"})),
+        )
+            .into_response();
+    }
+
+    // Hash new password and update
+    let new_hash = match auth::hash_password(&req.new_password) {
+        Ok(h) => h,
+        Err(e) => {
+            return (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(json!({"error": e})),
+            )
+                .into_response();
+        }
+    };
+
+    match db::update_password(&state.pool, user_id, &new_hash).await {
+        Ok(_) => {
+            let _ = db::insert_audit_entry(
+                &state.pool,
+                Some(user_id),
+                "change_password",
+                Some("user"),
+                Some(user_id),
+                None,
+                None,
+                None,
+            )
+            .await;
+
+            (
+                StatusCode::OK,
+                Json(json!({"success": true, "mensaje": "Contraseña actualizada correctamente"})),
+            )
+                .into_response()
         }
         Err(e) => (
             StatusCode::INTERNAL_SERVER_ERROR,

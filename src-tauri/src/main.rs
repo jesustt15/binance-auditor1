@@ -232,6 +232,19 @@ async fn client_create_user(
 }
 
 #[tauri::command]
+async fn client_change_password(
+    current_password: String,
+    new_password: String,
+    state: tauri::State<'_, AppState>,
+) -> Result<serde_json::Value, String> {
+    let client = {
+        let guard = state.http_client.lock().map_err(|e| e.to_string())?;
+        guard.as_ref().ok_or("Cliente HTTP no inicializado")?.clone()
+    };
+    client.change_password(&current_password, &new_password).await
+}
+
+#[tauri::command]
 async fn client_update_user(
     user_id: String,
     updates: serde_json::Value,
@@ -755,6 +768,7 @@ fn main() {
             client_list_users,
             client_create_user,
             client_update_user,
+            client_change_password,
             // Standalone commands
             sync_emails,
             sync_historical,

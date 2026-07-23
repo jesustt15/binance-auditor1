@@ -8,6 +8,7 @@ export interface ApiUser {
   company_group: string | null
   station_name: string | null
   is_active: boolean
+  must_change_password: boolean
   created_at: string
 }
 
@@ -87,4 +88,10 @@ export const api = {
 
   updateUser: (id: string, data: { is_active?: boolean; role?: string; company_group?: string; station_name?: string }) =>
     invoke<ApiUser>('client_update_user', { userId: id, updates: data }),
+
+  changePassword: (currentPassword: string, newPassword: string) =>
+    invoke<{ success: boolean; mensaje: string }>('client_change_password', {
+      currentPassword,
+      newPassword,
+    }),
 }

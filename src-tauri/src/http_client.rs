@@ -226,6 +226,18 @@ impl HttpClient {
         self.post_json_value("/api/users", &body).await
     }
 
+    pub async fn change_password(
+        &self,
+        current_password: &str,
+        new_password: &str,
+    ) -> Result<serde_json::Value, String> {
+        let body = serde_json::json!({
+            "current_password": current_password,
+            "new_password": new_password,
+        });
+        self.post_json_value("/api/auth/change-password", &body).await
+    }
+
     pub async fn update_user(
         &self,
         id: &str,

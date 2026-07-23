@@ -29,6 +29,7 @@ export default function Login({ onLogin }: Props) {
           company_group: string | null
           station_name: string | null
           is_active: boolean
+          must_change_password: boolean
           created_at: string
         }
       }>('client_login', { username, password })

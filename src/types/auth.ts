@@ -16,6 +16,7 @@ export interface User {
   company_group: 'ferreteria_principal' | 'pintatodo' | 'herramientas_brink' | null
   station_name: string | null
   is_active: boolean
+  must_change_password: boolean
   created_at: string
 }
 

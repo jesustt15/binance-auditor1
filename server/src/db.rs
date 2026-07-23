@@ -24,6 +24,7 @@ pub async fn run_migrations(pool: &PgPool) -> Result<(), String> {
         include_str!("../migrations/001_init.sql"),
         include_str!("../migrations/002_add_hora_correo.sql"),
         include_str!("../migrations/003_add_company_group.sql"),
+        include_str!("../migrations/004_must_change_password.sql"),
     ];
 
     for migration_sql in migrations {
@@ -80,17 +81,19 @@ pub async fn create_user(
     role: &str,
     company_group: Option<&str>,
     station_name: Option<&str>,
+    must_change_password: bool,
 ) -> Result<User, String> {
     let row = sqlx::query_as::<_, User>(
-        "INSERT INTO users (username, password_hash, role, company_group, station_name)
-         VALUES ($1, $2, $3::text, $4, $5)
-         RETURNING id, username, password_hash, role, company_group, station_name, is_active, created_at, updated_at",
+        "INSERT INTO users (username, password_hash, role, company_group, station_name, must_change_password)
+         VALUES ($1, $2, $3::text, $4, $5, $6)
+         RETURNING id, username, password_hash, role, company_group, station_name, is_active, must_change_password, created_at, updated_at",
     )
     .bind(username)
     .bind(password_hash)
     .bind(role)
     .bind(company_group)
     .bind(station_name)
+    .bind(must_change_password)
     .fetch_one(pool)
     .await
     .map_err(|e| {
@@ -105,7 +108,7 @@ pub async fn create_user(
 
 pub async fn find_user_by_username(pool: &PgPool, username: &str) -> Result<Option<User>, String> {
     let row = sqlx::query_as::<_, User>(
-        "SELECT id, username, password_hash, role, company_group, station_name, is_active, created_at, updated_at
+        "SELECT id, username, password_hash, role, company_group, station_name, is_active, must_change_password, created_at, updated_at
          FROM users WHERE username = $1",
     )
     .bind(username)
@@ -117,7 +120,7 @@ pub async fn find_user_by_username(pool: &PgPool, username: &str) -> Result<Opti
 
 pub async fn find_user_by_id(pool: &PgPool, user_id: Uuid) -> Result<Option<User>, String> {
     let row = sqlx::query_as::<_, User>(
-        "SELECT id, username, password_hash, role, company_group, station_name, is_active, created_at, updated_at
+        "SELECT id, username, password_hash, role, company_group, station_name, is_active, must_change_password, created_at, updated_at
          FROM users WHERE id = $1",
     )
     .bind(user_id)
@@ -129,7 +132,7 @@ pub async fn find_user_by_id(pool: &PgPool, user_id: Uuid) -> Result<Option<User
 
 pub async fn list_users(pool: &PgPool) -> Result<Vec<User>, String> {
     let rows = sqlx::query_as::<_, User>(
-        "SELECT id, username, password_hash, role, company_group, station_name, is_active, created_at, updated_at
+        "SELECT id, username, password_hash, role, company_group, station_name, is_active, must_change_password, created_at, updated_at
          FROM users ORDER BY created_at DESC",
     )
     .fetch_all(pool)
@@ -145,6 +148,7 @@ pub async fn update_user(
     is_active: Option<bool>,
     company_group: Option<&str>,
     station_name: Option<&str>,
+    must_change_password: Option<bool>,
 ) -> Result<User, String> {
     let row = sqlx::query_as::<_, User>(
         "UPDATE users
@@ -152,20 +156,40 @@ pub async fn update_user(
              is_active = COALESCE($3, is_active),
              company_group = COALESCE($4, company_group),
              station_name = COALESCE($5, station_name),
+             must_change_password = COALESCE($6, must_change_password),
              updated_at = now()
          WHERE id = $1
-         RETURNING id, username, password_hash, role, company_group, station_name, is_active, created_at, updated_at",
+         RETURNING id, username, password_hash, role, company_group, station_name, is_active, must_change_password, created_at, updated_at",
     )
     .bind(user_id)
     .bind(role)
     .bind(is_active)
     .bind(company_group)
     .bind(station_name)
+    .bind(must_change_password)
     .fetch_optional(pool)
     .await
     .map_err(|e| format!("DB error al actualizar usuario: {}", e))?
     .ok_or("Usuario no encontrado".to_string())?;
     Ok(row)
+}
+
+pub async fn update_password(
+    pool: &PgPool,
+    user_id: Uuid,
+    password_hash: &str,
+) -> Result<(), String> {
+    sqlx::query(
+        "UPDATE users
+         SET password_hash = $1, must_change_password = false, updated_at = now()
+         WHERE id = $2",
+    )
+    .bind(password_hash)
+    .bind(user_id)
+    .execute(pool)
+    .await
+    .map_err(|e| format!("DB error al actualizar password: {}", e))?;
+    Ok(())
 }
 
 // =========================================================================
