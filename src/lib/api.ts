@@ -1,10 +1,21 @@
 import { invoke } from '@tauri-apps/api/core'
 
+// Tipo compartido de User para respuestas
+export interface ApiUser {
+  id: string
+  username: string
+  role: string
+  company_group: string | null
+  station_name: string | null
+  is_active: boolean
+  created_at: string
+}
+
 // Tipos locales para evitar dependencia circular
 interface ApiResponse {
   token?: string
   refresh_token?: string
-  user?: { id: string; username: string; role: string; station_name: string | null }
+  user?: ApiUser
   verificado?: boolean
   mensaje?: string
   data?: unknown
@@ -21,7 +32,7 @@ export const api = {
     invoke<{
       token: string
       refresh_token: string
-      user: { id: string; username: string; role: string; station_name: string | null; is_active: boolean; created_at: string }
+      user: ApiUser
     }>('client_login', { username, password }),
 
   verifyPayment: (usuarioEmpresa: string, montoEmpresa: number, fechaEmpresa: string) =>
@@ -69,11 +80,11 @@ export const api = {
     invoke<{ verificado: boolean; mensaje: string; data: unknown }>('client_quick_verify_pago', { paymentId: id }),
 
   listUsers: () =>
-    invoke<Array<{ id: string; username: string; role: string; station_name: string | null; is_active: boolean; created_at: string }>>('client_list_users'),
+    invoke<ApiUser[]>('client_list_users'),
 
-  createUser: (data: { username: string; password: string; role: string; station_name?: string }) =>
-    invoke<{ id: string; username: string; role: string; station_name: string | null; is_active: boolean; created_at: string }>('client_create_user', data),
+  createUser: (data: { username: string; password: string; role: string; company_group?: string; station_name?: string }) =>
+    invoke<ApiUser>('client_create_user', data),
 
-  updateUser: (id: string, data: { is_active?: boolean; role?: string; station_name?: string }) =>
-    invoke<{ id: string; username: string; role: string; station_name: string | null; is_active: boolean; created_at: string }>('client_update_user', { userId: id, updates: data }),
+  updateUser: (id: string, data: { is_active?: boolean; role?: string; company_group?: string; station_name?: string }) =>
+    invoke<ApiUser>('client_update_user', { userId: id, updates: data }),
 }

@@ -23,6 +23,7 @@ pub async fn run_migrations(pool: &PgPool) -> Result<(), String> {
     let migrations: &[&str] = &[
         include_str!("../migrations/001_init.sql"),
         include_str!("../migrations/002_add_hora_correo.sql"),
+        include_str!("../migrations/003_add_company_group.sql"),
     ];
 
     for migration_sql in migrations {
@@ -77,16 +78,18 @@ pub async fn create_user(
     username: &str,
     password_hash: &str,
     role: &str,
+    company_group: Option<&str>,
     station_name: Option<&str>,
 ) -> Result<User, String> {
     let row = sqlx::query_as::<_, User>(
-        "INSERT INTO users (username, password_hash, role, station_name)
-         VALUES ($1, $2, $3::text, $4)
-         RETURNING id, username, password_hash, role, station_name, is_active, created_at, updated_at",
+        "INSERT INTO users (username, password_hash, role, company_group, station_name)
+         VALUES ($1, $2, $3::text, $4, $5)
+         RETURNING id, username, password_hash, role, company_group, station_name, is_active, created_at, updated_at",
     )
     .bind(username)
     .bind(password_hash)
     .bind(role)
+    .bind(company_group)
     .bind(station_name)
     .fetch_one(pool)
     .await
@@ -102,7 +105,7 @@ pub async fn create_user(
 
 pub async fn find_user_by_username(pool: &PgPool, username: &str) -> Result<Option<User>, String> {
     let row = sqlx::query_as::<_, User>(
-        "SELECT id, username, password_hash, role, station_name, is_active, created_at, updated_at
+        "SELECT id, username, password_hash, role, company_group, station_name, is_active, created_at, updated_at
          FROM users WHERE username = $1",
     )
     .bind(username)
@@ -114,7 +117,7 @@ pub async fn find_user_by_username(pool: &PgPool, username: &str) -> Result<Opti
 
 pub async fn find_user_by_id(pool: &PgPool, user_id: Uuid) -> Result<Option<User>, String> {
     let row = sqlx::query_as::<_, User>(
-        "SELECT id, username, password_hash, role, station_name, is_active, created_at, updated_at
+        "SELECT id, username, password_hash, role, company_group, station_name, is_active, created_at, updated_at
          FROM users WHERE id = $1",
     )
     .bind(user_id)
@@ -126,7 +129,7 @@ pub async fn find_user_by_id(pool: &PgPool, user_id: Uuid) -> Result<Option<User
 
 pub async fn list_users(pool: &PgPool) -> Result<Vec<User>, String> {
     let rows = sqlx::query_as::<_, User>(
-        "SELECT id, username, password_hash, role, station_name, is_active, created_at, updated_at
+        "SELECT id, username, password_hash, role, company_group, station_name, is_active, created_at, updated_at
          FROM users ORDER BY created_at DESC",
     )
     .fetch_all(pool)
@@ -140,20 +143,23 @@ pub async fn update_user(
     user_id: Uuid,
     role: Option<&str>,
     is_active: Option<bool>,
+    company_group: Option<&str>,
     station_name: Option<&str>,
 ) -> Result<User, String> {
     let row = sqlx::query_as::<_, User>(
         "UPDATE users
          SET role = COALESCE($2::text, role),
              is_active = COALESCE($3, is_active),
-             station_name = COALESCE($4, station_name),
+             company_group = COALESCE($4, company_group),
+             station_name = COALESCE($5, station_name),
              updated_at = now()
          WHERE id = $1
-         RETURNING id, username, password_hash, role, station_name, is_active, created_at, updated_at",
+         RETURNING id, username, password_hash, role, company_group, station_name, is_active, created_at, updated_at",
     )
     .bind(user_id)
     .bind(role)
     .bind(is_active)
+    .bind(company_group)
     .bind(station_name)
     .fetch_optional(pool)
     .await
@@ -199,9 +205,9 @@ pub async fn list_payments(
 
     // Use a simpler approach: fetch all within date range and filter in-memory
     // for the amount filters. This avoids complex dynamic query building.
-    let mut query = sqlx::query_as::<_, Payment>(
+    let  query = sqlx::query_as::<_, Payment>(
         "SELECT payments.id, payments.tipo, payments.usuario_remitente, payments.monto, payments.moneda, payments.fecha_correo, payments.estado,
-                payments.observaciones, payments.verificado_en, payments.verified_by, payments.fraud_verdict, payments.fraud_details,
+                payments.observaciones, payments.verificado_en, payments.verified_by, payments.company_group, payments.fraud_verdict, payments.fraud_details,
                 payments.email_uid, payments.raw_headers, payments.hora_correo, payments.created_at, payments.updated_at,
                 COALESCE(users.username, 'Sistema') as verified_by_name
          FROM payments
@@ -252,9 +258,9 @@ pub async fn list_payments_by_sender(
 ) -> Result<Vec<Payment>, String> {
     let pattern = format!("%{}%", remitente);
 
-    let mut query = sqlx::query_as::<_, Payment>(
+    let query = sqlx::query_as::<_, Payment>(
         "SELECT payments.id, payments.tipo, payments.usuario_remitente, payments.monto, payments.moneda, payments.fecha_correo, payments.estado,
-                payments.observaciones, payments.verificado_en, payments.verified_by, payments.fraud_verdict, payments.fraud_details,
+                payments.observaciones, payments.verificado_en, payments.verified_by, payments.company_group, payments.fraud_verdict, payments.fraud_details,
                 payments.email_uid, payments.raw_headers, payments.hora_correo, payments.created_at, payments.updated_at,
                 COALESCE(users.username, 'Sistema') as verified_by_name
          FROM payments
@@ -300,7 +306,7 @@ pub async fn list_payments_by_sender(
 pub async fn find_payment_by_id(pool: &PgPool, id: Uuid) -> Result<Option<Payment>, String> {
     let row = sqlx::query_as::<_, Payment>(
         "SELECT payments.id, payments.tipo, payments.usuario_remitente, payments.monto, payments.moneda, payments.fecha_correo, payments.estado,
-                payments.observaciones, payments.verificado_en, payments.verified_by, payments.fraud_verdict, payments.fraud_details,
+                payments.observaciones, payments.verificado_en, payments.verified_by, payments.company_group, payments.fraud_verdict, payments.fraud_details,
                 payments.email_uid, payments.raw_headers, payments.hora_correo, payments.created_at, payments.updated_at,
                 COALESCE(users.username, 'Sistema') as verified_by_name
          FROM payments
@@ -323,7 +329,7 @@ pub async fn find_payment_for_verification(
 ) -> Result<Option<Payment>, String> {
     let row = sqlx::query_as::<_, Payment>(
         "SELECT payments.id, payments.tipo, payments.usuario_remitente, payments.monto, payments.moneda, payments.fecha_correo, payments.estado,
-                payments.observaciones, payments.verificado_en, payments.verified_by, payments.fraud_verdict, payments.fraud_details,
+                payments.observaciones, payments.verificado_en, payments.verified_by, payments.company_group, payments.fraud_verdict, payments.fraud_details,
                 payments.email_uid, payments.raw_headers, payments.hora_correo, payments.created_at, payments.updated_at,
                 COALESCE(users.username, 'Sistema') as verified_by_name
          FROM payments
@@ -350,6 +356,7 @@ pub async fn verify_payment(
     payment_id: Uuid,
     verified_by: Uuid,
     observaciones: &str,
+    company_group: Option<&str>,
 ) -> Result<(), String> {
     let now = Utc::now();
     sqlx::query(
@@ -358,6 +365,7 @@ pub async fn verify_payment(
              verificado_en = $1,
              verified_by = $2,
              observaciones = $3,
+             company_group = COALESCE($5, company_group),
              updated_at = now()
          WHERE id = $4",
     )
@@ -365,6 +373,7 @@ pub async fn verify_payment(
     .bind(verified_by)
     .bind(observaciones)
     .bind(payment_id)
+    .bind(company_group)
     .execute(pool)
     .await
     .map_err(|e| format!("DB error al verificar pago: {}", e))?;
@@ -376,6 +385,7 @@ pub async fn quick_verify_payment(
     payment_id: Uuid,
     verified_by: Uuid,
     observaciones: &str,
+    company_group: Option<&str>,
 ) -> Result<Payment, String> {
     let now = Utc::now();
     let affected = sqlx::query(
@@ -384,6 +394,7 @@ pub async fn quick_verify_payment(
              verificado_en = $1,
              verified_by = $2,
              observaciones = $3,
+             company_group = COALESCE($5, company_group),
              updated_at = now()
          WHERE id = $4 AND estado = 'disponible'",
     )
@@ -391,6 +402,7 @@ pub async fn quick_verify_payment(
     .bind(verified_by)
     .bind(observaciones)
     .bind(payment_id)
+    .bind(company_group)
     .execute(pool)
     .await
     .map_err(|e| format!("DB error al verificar pago: {}", e))?
@@ -403,7 +415,7 @@ pub async fn quick_verify_payment(
     // Fetch the updated payment with LEFT JOIN for verified_by_name
     let row = sqlx::query_as::<_, Payment>(
         "SELECT payments.id, payments.tipo, payments.usuario_remitente, payments.monto, payments.moneda, payments.fecha_correo, payments.estado,
-                payments.observaciones, payments.verificado_en, payments.verified_by, payments.fraud_verdict, payments.fraud_details,
+                payments.observaciones, payments.verificado_en, payments.verified_by, payments.company_group, payments.fraud_verdict, payments.fraud_details,
                 payments.email_uid, payments.raw_headers, payments.hora_correo, payments.created_at, payments.updated_at,
                 COALESCE(users.username, 'Sistema') as verified_by_name
          FROM payments
@@ -542,7 +554,7 @@ pub async fn query_audit_log(
     desde: Option<&str>,
     hasta: Option<&str>,
 ) -> Result<Vec<AuditEntry>, String> {
-    let mut sql = String::from(
+    let _sql = String::from(
         "SELECT id, user_id, action, resource_type, resource_id, details, ip_address::text, user_agent, created_at
          FROM audit_log WHERE 1=1",
     );

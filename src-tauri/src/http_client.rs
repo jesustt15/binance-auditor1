@@ -11,6 +11,7 @@ pub struct HttpClient {
     jwt_token: Option<String>,
 }
 
+#[allow(dead_code)]
 impl HttpClient {
     pub fn new(base_url: &str) -> Result<Self, String> {
         let client = reqwest::Client::builder()
@@ -212,12 +213,14 @@ impl HttpClient {
         username: &str,
         password: &str,
         role: &str,
+        company_group: Option<&str>,
         station_name: Option<&str>,
     ) -> Result<serde_json::Value, String> {
         let body = serde_json::json!({
             "username": username,
             "password": password,
             "role": role,
+            "company_group": company_group,
             "station_name": station_name,
         });
         self.post_json_value("/api/users", &body).await

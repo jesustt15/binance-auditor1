@@ -220,6 +220,7 @@ async fn client_create_user(
     username: String,
     password: String,
     role: String,
+    company_group: Option<String>,
     station_name: Option<String>,
     state: tauri::State<'_, AppState>,
 ) -> Result<serde_json::Value, String> {
@@ -227,7 +228,7 @@ async fn client_create_user(
         let guard = state.http_client.lock().map_err(|e| e.to_string())?;
         guard.as_ref().ok_or("Cliente HTTP no inicializado")?.clone()
     };
-    client.create_user(&username, &password, &role, station_name.as_deref()).await
+    client.create_user(&username, &password, &role, company_group.as_deref(), station_name.as_deref()).await
 }
 
 #[tauri::command]
@@ -298,6 +299,7 @@ fn verify_payment(
     monto_empresa: f64,
     fecha_empresa: String,
     verified_by_name: String,
+    company_group: Option<String>,
     state: tauri::State<AppState>,
 ) -> Result<VerifyResult, String> {
     let conn = state.db_conn.lock().map_err(|e| e.to_string())?;
@@ -327,7 +329,7 @@ fn verify_payment(
             }
 
             let obs = "Conciliado automaticamente con reporte de empresa.".to_string();
-            db::mark_as_verificado(&conn, p.id, &obs, &verified_by_name)
+            db::mark_as_verificado(&conn, p.id, &obs, &verified_by_name, company_group.as_deref())
                 .map_err(|e| format!("DB update error: {}", e))?;
 
             let updated_pago = PagoBinance {
@@ -335,6 +337,7 @@ fn verify_payment(
                 verificado_en: Some(chrono::Utc::now().to_rfc3339()),
                 observaciones: Some(obs.clone()),
                 verified_by_name: Some(verified_by_name),
+                company_group: company_group.or(p.company_group.clone()),
                 ..p.clone()
             };
 
@@ -545,7 +548,7 @@ fn import_csv(
         match db::find_pago_for_verification(&conn, &usuario, monto, &inicio_rango.to_string(), &fin_rango.to_string()) {
             Ok(Some(p)) => {
                 let obs = format!("Conciliado via CSV (fila {}).", fila_num);
-                let _ = db::mark_as_verificado(&conn, p.id, &obs, &username);
+                let _ = db::mark_as_verificado(&conn, p.id, &obs, &username, None);
                 resultados.push(ImportRowDetail { fila: fila_num, usuario, monto, fecha, resultado: "verificado".to_string() });
                 verificados += 1;
             }
@@ -665,7 +668,7 @@ fn import_excel(file_path: String, username: String, state: tauri::State<AppStat
         let fin_rango = (fecha_base + chrono::Duration::days(1)).and_hms_opt(23, 59, 59).unwrap();
 
         match db::find_pago_for_verification(&conn, &usuario, monto, &inicio_rango.to_string(), &fin_rango.to_string()) {
-            Ok(Some(p)) => { let _ = db::mark_as_verificado(&conn, p.id, &format!("Conciliado via Excel (fila {}).", fila_num), &username); resultados.push(ImportRowDetail { fila: fila_num, usuario, monto, fecha, resultado: "verificado".to_string() }); verificados += 1; }
+            Ok(Some(p)) => { let _ = db::mark_as_verificado(&conn, p.id, &format!("Conciliado via Excel (fila {}).", fila_num), &username, None); resultados.push(ImportRowDetail { fila: fila_num, usuario, monto, fecha, resultado: "verificado".to_string() }); verificados += 1; }
             Ok(None) => { resultados.push(ImportRowDetail { fila: fila_num, usuario, monto, fecha, resultado: "no_encontrado".to_string() }); no_encontrados += 1; }
             Err(e) => { resultados.push(ImportRowDetail { fila: fila_num, usuario, monto, fecha, resultado: format!("error: {}", e) }); errores += 1; }
         }

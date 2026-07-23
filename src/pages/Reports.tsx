@@ -2,8 +2,10 @@ import { useState } from 'react'
 import { invoke } from '@tauri-apps/api/core'
 import type { PagoBinance, ExportResult } from '../types'
 import ReportTable from '../components/ReportTable'
+import { useAuth } from '../App'
 
 export default function Reports() {
+  const { auth } = useAuth()
   const [desde, setDesde] = useState('')
   const [hasta, setHasta] = useState('')
   const [remitente, setRemitente] = useState('')
@@ -65,7 +67,7 @@ export default function Reports() {
               type="date"
               value={desde}
               onChange={(e) => setDesde(e.target.value)}
-              className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-amber-500"
+              className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-amber-500"
             />
           </div>
           <div className="flex-1 min-w-[160px]">
@@ -74,7 +76,7 @@ export default function Reports() {
               type="date"
               value={hasta}
               onChange={(e) => setHasta(e.target.value)}
-              className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-amber-500"
+              className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-amber-500"
             />
           </div>
           <div className="flex-1 min-w-[180px]">
@@ -116,7 +118,7 @@ export default function Reports() {
 
       {pagos.length > 0 || error ? (
         <div className="bg-slate-800/50 p-6 rounded-xl border border-slate-700">
-          <ReportTable pagos={pagos} />
+          <ReportTable pagos={pagos} currentCompanyGroup={auth.user?.company_group ?? undefined} />
         </div>
       ) : (
         <div className="text-center text-slate-500 py-12 text-sm">

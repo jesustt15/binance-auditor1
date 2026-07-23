@@ -10,6 +10,7 @@ export interface PagoBinance {
   verificado_en: string | null
   hora_correo: string | null
   verified_by_name: string | null
+  company_group: string | null
   creado_en: string
 }
 

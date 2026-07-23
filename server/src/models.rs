@@ -106,6 +106,7 @@ pub struct User {
     #[serde(skip_serializing)]
     pub password_hash: String,
     pub role: UserRole,
+    pub company_group: Option<String>,
     pub station_name: Option<String>,
     pub is_active: bool,
     pub created_at: DateTime<Utc>,
@@ -118,6 +119,7 @@ pub struct UserPublic {
     pub id: Uuid,
     pub username: String,
     pub role: UserRole,
+    pub company_group: Option<String>,
     pub station_name: Option<String>,
     pub is_active: bool,
     pub created_at: DateTime<Utc>,
@@ -129,6 +131,7 @@ impl From<User> for UserPublic {
             id: u.id,
             username: u.username,
             role: u.role,
+            company_group: u.company_group,
             station_name: u.station_name,
             is_active: u.is_active,
             created_at: u.created_at,
@@ -182,6 +185,7 @@ pub struct Payment {
     pub observaciones: Option<String>,
     pub verificado_en: Option<DateTime<Utc>>,
     pub verified_by: Option<Uuid>,
+    pub company_group: Option<String>,
     pub fraud_verdict: Option<String>,
     pub fraud_details: Option<serde_json::Value>,
     pub email_uid: Option<i32>,
@@ -208,6 +212,7 @@ pub struct PaymentResponse {
     pub fraud_verdict: Option<String>,
     pub hora_correo: Option<String>,
     pub verified_by_name: Option<String>,
+    pub company_group: Option<String>,
     pub created_at: String,
 }
 
@@ -232,6 +237,7 @@ impl From<Payment> for PaymentResponse {
             fraud_verdict: p.fraud_verdict,
             hora_correo: p.hora_correo,
             verified_by_name: p.verified_by_name,
+            company_group: p.company_group,
             created_at: p.created_at.to_rfc3339(),
         }
     }
@@ -328,6 +334,7 @@ pub struct Claims {
     pub sub: String,      // user UUID
     pub username: String,
     pub role: String,     // "admin" or "cashier"
+    pub company_group: Option<String>,
     pub iat: usize,
     pub exp: usize,
 }
@@ -445,6 +452,7 @@ pub struct CreateUserRequest {
     pub username: String,
     pub password: String,
     pub role: String,
+    pub company_group: Option<String>,
     pub station_name: Option<String>,
 }
 
@@ -452,6 +460,7 @@ pub struct CreateUserRequest {
 pub struct UpdateUserRequest {
     pub role: Option<String>,
     pub is_active: Option<bool>,
+    pub company_group: Option<String>,
     pub station_name: Option<String>,
 }
 

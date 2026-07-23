@@ -48,6 +48,7 @@ export default function Dashboard() {
         montoEmpresa: p.monto,
         fechaEmpresa: fecha,
         verifiedByName,
+        companyGroup: auth.user?.company_group ?? null,
       })
       if (result.verificado) {
         if (pagosBD) listarPagos()
@@ -177,6 +178,17 @@ export default function Dashboard() {
         <div>
           <h1 className="text-2xl font-bold tracking-tight">Binance Pay Auditor v1.2</h1>
           <p className="text-slate-400 text-sm">Conciliacion de pagos</p>
+          {auth.user?.company_group && (
+            <span className={`mt-1 inline-block px-2 py-0.5 rounded text-[11px] font-medium ${
+              auth.user.company_group === 'ferreteria_principal' ? 'bg-blue-950 text-blue-400' :
+              auth.user.company_group === 'pintatodo' ? 'bg-yellow-950 text-yellow-400' :
+              'bg-red-950 text-red-400'
+            }`}>
+              {auth.user.company_group === 'ferreteria_principal' ? 'Ferretería Principal' :
+               auth.user.company_group === 'pintatodo' ? 'Pintatodo' :
+               'Herramientas Brink'}
+            </span>
+          )}
         </div>
         <SyncButton onSyncComplete={() => {}} />
       </div>
@@ -189,13 +201,13 @@ export default function Dashboard() {
           Los correos no se marcan como leidos. Los duplicados se saltan automaticamente.
         </p>
         <div className="flex gap-3 items-end">
-          <div className="flex-1 min-w-[180px]">
+          <div className="flex-1 min-w-20">
             <label className="block text-xs font-medium text-slate-400 mb-1">Buscar desde</label>
             <input
               type="date"
               value={histFecha}
               onChange={(e) => setHistFecha(e.target.value)}
-              className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm text-slate-300 focus:outline-none focus:border-amber-500"
+              className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-amber-500"
             />
           </div>
           <button
@@ -323,7 +335,7 @@ export default function Dashboard() {
                 type="date"
                 value={desdeBD}
                 onChange={(e) => setDesdeBD(e.target.value)}
-                className="bg-slate-900 border border-slate-700 rounded px-2 py-1 text-xs text-slate-300 w-32 focus:outline-none focus:border-amber-500"
+                className="bg-slate-900 border border-slate-700 rounded px-2 py-1 text-xs text-white w-32 focus:outline-none focus:border-amber-500"
               />
             </div>
             <div>
@@ -332,7 +344,7 @@ export default function Dashboard() {
                 type="date"
                 value={hastaBD}
                 onChange={(e) => setHastaBD(e.target.value)}
-                className="bg-slate-900 border border-slate-700 rounded px-2 py-1 text-xs text-slate-300 w-32 focus:outline-none focus:border-amber-500"
+                className="bg-slate-900 border border-slate-700 rounded px-2 py-1 text-xs text-white w-32 focus:outline-none focus:border-amber-500"
               />
             </div>
             <div>
@@ -401,6 +413,23 @@ export default function Dashboard() {
             <p className="text-slate-500 text-sm">No hay pagos en la base de datos. Sincroniza primero.</p>
           ) : (
             <div className="overflow-x-auto">
+              {/* Leyenda de grupos empresariales */}
+              <div className="flex items-center gap-4 mb-3 text-[10px] text-slate-500">
+                <span>Grupos:</span>
+                <span className="flex items-center gap-1">
+                  <span className="inline-block w-2.5 h-2.5 rounded-sm bg-blue-500/60" />
+                  Ferretería Principal
+                </span>
+                <span className="flex items-center gap-1">
+                  <span className="inline-block w-2.5 h-2.5 rounded-sm bg-yellow-500/60" />
+                  Pintatodo
+                </span>
+                <span className="flex items-center gap-1">
+                  <span className="inline-block w-2.5 h-2.5 rounded-sm bg-red-500/60" />
+                  Herramientas Brink
+                </span>
+              </div>
+
               <table className="w-full text-xs text-left">
                 <thead className="text-slate-400 border-b border-slate-700">
                   <tr>
@@ -412,6 +441,7 @@ export default function Dashboard() {
                     <th className="pb-2 pr-2">Fecha Correo</th>
                     <th className="pb-2 pr-2">Hora</th>
                     <th className="pb-2 pr-2">Estado</th>
+                    <th className="pb-2 pr-2">Grupo</th>
                     <th className="pb-2 pr-2">Acción</th>
                   </tr>
                 </thead>
@@ -441,9 +471,31 @@ export default function Dashboard() {
                         </span>
                       </td>
                       <td className="py-2 pr-2">
+                        {(() => {
+                          const grupo = p.company_group ?? (
+                            p.estado === 'verificado' && p.verified_by_name === auth.user?.username
+                              ? auth.user?.company_group
+                              : null
+                          )
+                          return grupo ? (
+                            <span className={`px-1.5 py-0.5 rounded text-[10px] font-medium ${
+                              grupo === 'ferreteria_principal' ? 'bg-blue-950 text-blue-400' :
+                              grupo === 'pintatodo' ? 'bg-yellow-950 text-yellow-400' :
+                              'bg-red-950 text-red-400'
+                            }`}>
+                              {grupo === 'ferreteria_principal' ? 'Ferretería Principal' :
+                               grupo === 'pintatodo' ? 'Pintatodo' :
+                               'Herramientas Brink'}
+                            </span>
+                          ) : (
+                            <span className="text-slate-600">—</span>
+                          )
+                        })()}
+                      </td>
+                      <td className="py-2 pr-2">
                         {p.estado === 'verificado' ? (
                           <span className="text-xs text-slate-500">
-                            Verificado por: {p.verified_by_name ?? 'Sistema'}
+                            ✓ {p.verified_by_name ?? 'Sistema'}
                           </span>
                         ) : (
                           <button
@@ -484,7 +536,7 @@ export default function Dashboard() {
                   >
                     Anterior
                   </button>
-                  <span className="text-xs text-slate-400 min-w-[80px] text-center">
+                  <span className="text-xs text-slate-400 min-w-20 text-center">
                     {paginaBD} / {totalPaginasBD}
                   </span>
                   <button

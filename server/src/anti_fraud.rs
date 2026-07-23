@@ -160,7 +160,7 @@ pub fn verify_email_headers(raw_email: &[u8]) -> FraudResult {
     }
 }
 
-fn determine_failure_reason(dkim: bool, spf: bool, dmarc: bool) -> String {
+fn determine_failure_reason(dkim: bool, spf: bool, _dmarc: bool) -> String {
     if !dkim && !spf {
         "dkim_fail".to_string()
     } else if !spf {

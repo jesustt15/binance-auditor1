@@ -1,10 +1,20 @@
 import { useState, useEffect } from 'react'
 import { api } from '../lib/api'
 
+const COMPANY_GROUPS = [
+  { value: 'ferreteria_principal', label: 'Ferretería Principal', color: 'bg-blue-950 text-blue-400' },
+  { value: 'pintatodo', label: 'Pintatodo', color: 'bg-yellow-950 text-yellow-400' },
+  { value: 'herramientas_brink', label: 'Herramientas Brink', color: 'bg-red-950 text-red-400' },
+] as const
+
+const companyGroupInfo = (val: string | null) =>
+  COMPANY_GROUPS.find(g => g.value === val) ?? { value: '', label: '—', color: 'bg-slate-800 text-slate-500' }
+
 interface UserRecord {
   id: string
   username: string
   role: string
+  company_group: string | null
   station_name: string | null
   is_active: boolean
   created_at: string
@@ -21,6 +31,7 @@ export default function Users() {
   const [newPassword, setNewPassword] = useState('')
   const [newRole, setNewRole] = useState('cashier')
   const [newStation, setNewStation] = useState('')
+  const [newCompanyGroup, setNewCompanyGroup] = useState('')
   const [creating, setCreating] = useState(false)
 
   // Toggle state
@@ -52,10 +63,12 @@ export default function Users() {
         username: newUsername,
         password: newPassword,
         role: newRole,
+        company_group: newCompanyGroup || undefined,
         station_name: newStation || undefined,
       })
       setNewUsername('')
       setNewPassword('')
+      setNewCompanyGroup('')
       setNewStation('')
       setShowCreate(false)
       loadUsers()
@@ -143,6 +156,22 @@ export default function Users() {
                 className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm text-slate-300 focus:outline-none focus:border-amber-500"
               />
             </div>
+            <div>
+              <label className="block text-xs font-medium text-slate-400 mb-1">
+                Grupo de Empresa {newRole === 'cashier' ? <span className="text-rose-400">*</span> : '(opcional)'}
+              </label>
+              <select
+                value={newCompanyGroup}
+                onChange={(e) => setNewCompanyGroup(e.target.value)}
+                required={newRole === 'cashier'}
+                className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm text-slate-300 focus:outline-none focus:border-amber-500"
+              >
+                <option value="">— Sin grupo —</option>
+                {COMPANY_GROUPS.map(g => (
+                  <option key={g.value} value={g.value}>{g.label}</option>
+                ))}
+              </select>
+            </div>
           </div>
           <button
             type="submit"
@@ -176,6 +205,7 @@ export default function Users() {
               <tr>
                 <th className="pb-2 pr-2">Usuario</th>
                 <th className="pb-2 pr-2">Rol</th>
+                <th className="pb-2 pr-2">Grupo</th>
                 <th className="pb-2 pr-2">Estación</th>
                 <th className="pb-2 pr-2">Estado</th>
                 <th className="pb-2 pr-2">Creado</th>
@@ -191,6 +221,11 @@ export default function Users() {
                       u.role === 'admin' ? 'bg-amber-950 text-amber-400' : 'bg-slate-800 text-slate-400'
                     }`}>
                       {u.role === 'admin' ? 'Admin' : 'Cajera'}
+                    </span>
+                  </td>
+                  <td className="py-2 pr-2">
+                    <span className={`px-1.5 py-0.5 rounded text-[10px] font-medium ${companyGroupInfo(u.company_group).color}`}>
+                      {companyGroupInfo(u.company_group).label}
                     </span>
                   </td>
                   <td className="py-2 pr-2 text-slate-400">{u.station_name ?? '—'}</td>

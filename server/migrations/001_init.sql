@@ -7,6 +7,7 @@ CREATE TABLE IF NOT EXISTS users (
     username VARCHAR(50) UNIQUE NOT NULL,
     password_hash VARCHAR(255) NOT NULL,  -- argon2id
     role TEXT NOT NULL CHECK (role IN ('admin', 'cashier')),
+    company_group TEXT CHECK (company_group IN ('ferreteria_principal', 'pintatodo', 'herramientas_brink')),
     station_name VARCHAR(100),
     is_active BOOLEAN NOT NULL DEFAULT true,
     created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
@@ -38,6 +39,7 @@ CREATE TABLE IF NOT EXISTS payments (
     observaciones TEXT,
     verificado_en TIMESTAMPTZ,
     verified_by UUID REFERENCES users(id),
+    company_group TEXT CHECK (company_group IN ('ferreteria_principal', 'pintatodo', 'herramientas_brink')),
     fraud_verdict TEXT DEFAULT 'clean'
         CHECK (fraud_verdict IN ('clean', 'dkim_fail', 'spf_fail', 'dmarc_fail', 'duplicate', 'amount_tamper')),
     fraud_details JSONB,

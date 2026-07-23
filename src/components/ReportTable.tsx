@@ -4,9 +4,10 @@ import { formatFecha } from '../lib/format'
 
 interface Props {
   pagos: PagoBinance[]
+  currentCompanyGroup?: string
 }
 
-export default function ReportTable({ pagos }: Props) {
+export default function ReportTable({ pagos, currentCompanyGroup }: Props) {
   const [pagina, setPagina] = useState(1)
   const [porPagina, setPorPagina] = useState(20)
 
@@ -43,6 +44,23 @@ export default function ReportTable({ pagos }: Props) {
           <p className="text-xs text-slate-400">Monto Total</p>
           <p className="text-xl font-bold text-amber-400">{montoTotal.toFixed(2)} USDT</p>
         </div>
+      </div>
+
+      {/* Leyenda de grupos empresariales */}
+      <div className="flex items-center gap-4 mb-3 text-[10px] text-slate-500">
+        <span>Grupos:</span>
+        <span className="flex items-center gap-1">
+          <span className="inline-block w-2.5 h-2.5 rounded-sm bg-blue-500/60" />
+          Ferretería Principal
+        </span>
+        <span className="flex items-center gap-1">
+          <span className="inline-block w-2.5 h-2.5 rounded-sm bg-yellow-500/60" />
+          Pintatodo
+        </span>
+        <span className="flex items-center gap-1">
+          <span className="inline-block w-2.5 h-2.5 rounded-sm bg-red-500/60" />
+          Herramientas Brink
+        </span>
       </div>
 
       <div className="overflow-x-auto">
@@ -95,7 +113,25 @@ export default function ReportTable({ pagos }: Props) {
                   </span>
                 </td>
                 <td className="py-2 px-3 text-slate-500 text-xs">
-                  {pago.verified_by_name ?? '—'}
+                  <span className="flex items-center gap-1">
+                    <span>{pago.verified_by_name ?? '—'}</span>
+                    {(() => {
+                      const grupo = pago.company_group ?? (
+                        pago.estado === 'verificado' ? currentCompanyGroup : null
+                      )
+                      return grupo ? (
+                        <span className={`px-1 py-0.5 rounded text-[9px] font-medium ${
+                          grupo === 'ferreteria_principal' ? 'bg-blue-950 text-blue-400' :
+                          grupo === 'pintatodo' ? 'bg-yellow-950 text-yellow-400' :
+                          'bg-red-950 text-red-400'
+                        }`}>
+                          {grupo === 'ferreteria_principal' ? 'Ferretería Principal' :
+                           grupo === 'pintatodo' ? 'Pintatodo' :
+                           'Herramientas Brink'}
+                        </span>
+                      ) : null
+                    })()}
+                  </span>
                 </td>
                 <td className="py-2 px-3 text-slate-500 text-xs max-w-xs truncate">
                   {pago.observaciones || '-'}
@@ -130,7 +166,7 @@ export default function ReportTable({ pagos }: Props) {
           >
             Anterior
           </button>
-          <span className="text-xs text-slate-400 min-w-[80px] text-center">
+          <span className="text-xs text-slate-400 min-w-20 text-center">
             {pagina} / {totalPaginas}
           </span>
           <button

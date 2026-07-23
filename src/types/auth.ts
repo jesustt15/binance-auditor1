@@ -13,6 +13,7 @@ export interface User {
   id: string
   username: string
   role: 'admin' | 'cashier'
+  company_group: 'ferreteria_principal' | 'pintatodo' | 'herramientas_brink' | null
   station_name: string | null
   is_active: boolean
   created_at: string

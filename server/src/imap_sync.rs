@@ -397,9 +397,9 @@ fn sync_emails_blocking(
         });
     }
 
-    let mut nuevos = 0i64;
-    let mut duplicados = 0i64;
-    let mut en_cuarentena = 0i64;
+    let  nuevos = 0i64;
+    let  duplicados = 0i64;
+    let  en_cuarentena = 0i64;
     let mut actual = 0usize;
 
     // We need a PgPool to persist — but we're in a blocking context.

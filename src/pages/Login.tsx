@@ -26,6 +26,7 @@ export default function Login({ onLogin }: Props) {
           id: string
           username: string
           role: 'admin' | 'cashier'
+          company_group: string | null
           station_name: string | null
           is_active: boolean
           created_at: string

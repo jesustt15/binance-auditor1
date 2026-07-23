@@ -120,6 +120,7 @@ async fn login_handler(
             UserRole::Admin => "admin",
             UserRole::Cashier => "cashier",
         },
+        user.company_group.as_deref(),
         &state.config.jwt_secret,
     )
     .unwrap_or_default();
@@ -196,6 +197,7 @@ async fn refresh_handler(
             UserRole::Admin => "admin",
             UserRole::Cashier => "cashier",
         },
+        user.company_group.as_deref(),
         &state.config.jwt_secret,
     )
     .unwrap_or_default();
@@ -350,7 +352,7 @@ async fn verify_payment_handler(
             let user_id = Uuid::parse_str(&auth.user_id).unwrap_or_default();
             let obs = "Conciliado automaticamente con reporte de empresa.".to_string();
 
-            let _ = db::verify_payment(&state.pool, p.id, user_id, &obs).await;
+            let _ = db::verify_payment(&state.pool, p.id, user_id, &obs, auth.company_group.as_deref()).await;
 
             // Audit log
             let _ = db::insert_audit_entry(
@@ -426,7 +428,7 @@ async fn quick_verify_handler(
     let user_id = Uuid::parse_str(&auth.user_id).unwrap_or_default();
     let obs = req.observaciones.as_deref().unwrap_or("Verificado manualmente");
 
-    match db::quick_verify_payment(&state.pool, payment_id, user_id, obs).await {
+    match db::quick_verify_payment(&state.pool, payment_id, user_id, obs, auth.company_group.as_deref()).await {
         Ok(payment) => {
             // Audit log
             let _ = db::insert_audit_entry(
@@ -643,7 +645,7 @@ async fn import_csv_handler(
     }
 
     // Parse and process CSV
-    let (total, verified, failed, details) = process_csv(&state, &contenido, user_id).await;
+    let (total, verified, failed, details) = process_csv(&state, &contenido, user_id, auth.company_group.as_deref()).await;
 
     // Create import record
     let import_id = db::create_import(&state.pool, &filename, "csv", total as i32, user_id)
@@ -681,6 +683,7 @@ async fn process_csv(
     state: &SharedState,
     contenido: &str,
     user_id: Uuid,
+    company_group: Option<&str>,
 ) -> (usize, usize, usize, Vec<ImportRowDetail>) {
     let mut builder = csv::ReaderBuilder::new();
     builder.flexible(true);
@@ -786,7 +789,7 @@ async fn process_csv(
         {
             Ok(Some(p)) => {
                 let obs = format!("Conciliado via CSV (fila {}).", fila_num);
-                let _ = db::verify_payment(&state.pool, p.id, user_id, &obs).await;
+                let _ = db::verify_payment(&state.pool, p.id, user_id, &obs, company_group).await;
                 details.push(ImportRowDetail {
                     row: fila_num,
                     usuario,
@@ -873,7 +876,7 @@ async fn import_excel_handler(
 
     // Process Excel using calamine
     let (total, verified, failed, details) =
-        process_excel_async(&state, &file_bytes, user_id).await;
+        process_excel_async(&state, &file_bytes, user_id, auth.company_group.as_deref()).await;
 
     let import_id = db::create_import(&state.pool, &filename, "xlsx", total as i32, user_id)
         .await
@@ -909,6 +912,7 @@ async fn process_excel_async(
     state: &SharedState,
     file_bytes: &[u8],
     user_id: Uuid,
+    company_group: Option<&str>,
 ) -> (usize, usize, usize, Vec<ImportRowDetail>) {
     use calamine::{Reader, DataType, open_workbook_auto};
 
@@ -1073,7 +1077,7 @@ async fn process_excel_async(
         {
             Ok(Some(p)) => {
                 let obs = format!("Conciliado via Excel (fila {}).", fila_num);
-                let _ = db::verify_payment(&state.pool, p.id, user_id, &obs).await;
+                let _ = db::verify_payment(&state.pool, p.id, user_id, &obs, company_group).await;
                 details.push(ImportRowDetail {
                     row: fila_num,
                     usuario,
@@ -1384,6 +1388,7 @@ async fn create_user_handler(
         &req.username,
         &hash,
         &req.role,
+        req.company_group.as_deref(),
         req.station_name.as_deref(),
     )
     .await
@@ -1430,6 +1435,7 @@ async fn update_user_handler(
         id,
         req.role.as_deref(),
         req.is_active,
+        req.company_group.as_deref(),
         req.station_name.as_deref(),
     )
     .await

@@ -22,6 +22,7 @@ export default function VerificationForm() {
         montoEmpresa: parseFloat(monto),
         fechaEmpresa: fecha,
         verifiedByName: auth.user?.username ?? 'desconocido',
+        companyGroup: auth.user?.company_group ?? null,
       })
       setResultado(result)
     } catch (err: any) {
@@ -65,7 +66,7 @@ export default function VerificationForm() {
             required
             value={fecha}
             onChange={(e) => setFecha(e.target.value)}
-            className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-amber-500"
+            className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-amber-500"
           />
         </div>
         <button

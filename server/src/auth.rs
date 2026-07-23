@@ -38,6 +38,7 @@ pub fn generate_access_token(
     user_id: &str,
     username: &str,
     role: &str,
+    company_group: Option<&str>,
     secret: &str,
 ) -> Result<String, String> {
     let now = Utc::now();
@@ -45,6 +46,7 @@ pub fn generate_access_token(
         sub: user_id.to_string(),
         username: username.to_string(),
         role: role.to_string(),
+        company_group: company_group.map(|s| s.to_string()),
         iat: now.timestamp() as usize,
         exp: (now.timestamp() + 900) as usize, // 15 min
     };
@@ -63,6 +65,7 @@ pub fn generate_refresh_token(user_id: &str, secret: &str) -> Result<String, Str
         sub: user_id.to_string(),
         username: String::new(),
         role: "refresh".to_string(),
+        company_group: None,
         iat: now.timestamp() as usize,
         exp: (now.timestamp() + 604800) as usize, // 7 days
     };
@@ -105,6 +108,7 @@ pub struct AuthUser {
     pub user_id: String,
     pub username: String,
     pub role: String,
+    pub company_group: Option<String>,
 }
 
 /// Extract auth user from request — requires JWT to have been validated
@@ -128,6 +132,7 @@ where
             user_id: claims.sub,
             username: claims.username,
             role: claims.role,
+            company_group: claims.company_group,
         })
     }
 }

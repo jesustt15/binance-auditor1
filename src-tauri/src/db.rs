@@ -26,6 +26,7 @@ pub struct PagoBinance {
     pub verificado_en: Option<String>,
     pub hora_correo: Option<String>,
     pub verified_by_name: Option<String>,
+    pub company_group: Option<String>,
     pub creado_en: String,
 }
 
@@ -58,6 +59,7 @@ pub fn init_db() -> Result<Connection> {
 
     migrate_schema_v2(&conn)?;
     migrate_schema_v3(&conn)?;
+    migrate_schema_v4(&conn)?;
 
     conn.execute(
         "CREATE TABLE IF NOT EXISTS pagos_binance (
@@ -71,6 +73,7 @@ pub fn init_db() -> Result<Connection> {
             observaciones TEXT,
             verificado_en TEXT,
             verified_by_name TEXT,
+            company_group TEXT,
             creado_en TEXT NOT NULL DEFAULT (datetime('now'))
         )",
         [],
@@ -142,16 +145,79 @@ fn migrate_schema_v2(conn: &Connection) -> Result<()> {
 }
 
 fn migrate_schema_v3(conn: &Connection) -> Result<()> {
-    let version: i64 = conn.pragma_query_value(None, "user_version", |row| row.get(0))?;
-    if version >= 3 {
+    // Check if the column actually exists — user_version alone is not reliable
+    // because a previous buggy migration (v1 of this function) used .ok()
+    // which silently swallowed ALTER TABLE failures while still bumping the version.
+    let col_exists: bool = conn
+        .query_row(
+            "SELECT COUNT(*) FROM pragma_table_info('pagos_binance') WHERE name = 'verified_by_name'",
+            [],
+            |row| row.get::<_, i64>(0),
+        )
+        .map(|c| c > 0)
+        .unwrap_or(false);
+
+    if col_exists {
+        // Column already exists — no work needed, just ensure version is current
+        let version: i64 = conn.pragma_query_value(None, "user_version", |row| row.get(0))?;
+        if version < 3 {
+            conn.pragma_update(None, "user_version", 3)?;
+        }
         return Ok(());
     }
 
-    conn.execute_batch(
-        "ALTER TABLE pagos_binance ADD COLUMN verified_by_name TEXT"
-    ).ok();
+    // Table must exist before we can add a column
+    let table_exists: bool = conn
+        .query_row(
+            "SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name='pagos_binance'",
+            [],
+            |row| row.get::<_, i64>(0),
+        )
+        .map(|c| c > 0)
+        .unwrap_or(false);
+
+    if table_exists {
+        conn.execute_batch("ALTER TABLE pagos_binance ADD COLUMN verified_by_name TEXT")?;
+    }
 
     conn.pragma_update(None, "user_version", 3)?;
+
+    Ok(())
+}
+
+fn migrate_schema_v4(conn: &Connection) -> Result<()> {
+    let col_exists: bool = conn
+        .query_row(
+            "SELECT COUNT(*) FROM pragma_table_info('pagos_binance') WHERE name = 'company_group'",
+            [],
+            |row| row.get::<_, i64>(0),
+        )
+        .map(|c| c > 0)
+        .unwrap_or(false);
+
+    if col_exists {
+        let version: i64 = conn.pragma_query_value(None, "user_version", |row| row.get(0))?;
+        if version >= 4 {
+            return Ok(());
+        }
+        conn.pragma_update(None, "user_version", 4)?;
+        return Ok(());
+    }
+
+    let table_exists: bool = conn
+        .query_row(
+            "SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name='pagos_binance'",
+            [],
+            |row| row.get::<_, i64>(0),
+        )
+        .map(|c| c > 0)
+        .unwrap_or(false);
+
+    if table_exists {
+        conn.execute_batch("ALTER TABLE pagos_binance ADD COLUMN company_group TEXT")?;
+    }
+
+    conn.pragma_update(None, "user_version", 4)?;
 
     Ok(())
 }
@@ -193,7 +259,7 @@ pub fn find_pago_for_verification(
 ) -> Result<Option<PagoBinance>> {
     let mut stmt = conn.prepare(
         "SELECT id, tipo, usuario_remitente, monto, moneda, fecha_correo, estado,
-                observaciones, verificado_en, verified_by_name, creado_en
+                observaciones, verificado_en, verified_by_name, company_group, creado_en
          FROM pagos_binance
          WHERE usuario_remitente = ?1
            AND monto = ?2
@@ -219,7 +285,8 @@ pub fn find_pago_for_verification(
                 verificado_en: row.get(8)?,
                 hora_correo: extract_hora_correo(&fecha_correo),
                 verified_by_name: row.get(9)?,
-                creado_en: row.get(10)?,
+                company_group: row.get(10)?,
+                creado_en: row.get(11)?,
             })
         },
     ).optional()?;
@@ -227,13 +294,23 @@ pub fn find_pago_for_verification(
     Ok(pago)
 }
 
-pub fn mark_as_verificado(conn: &Connection, id: i64, observaciones: &str, verified_by_name: &str) -> Result<()> {
+pub fn mark_as_verificado(
+    conn: &Connection,
+    id: i64,
+    observaciones: &str,
+    verified_by_name: &str,
+    company_group: Option<&str>,
+) -> Result<()> {
     let now = chrono::Utc::now().to_rfc3339();
     conn.execute(
         "UPDATE pagos_binance
-         SET estado = 'verificado', verificado_en = ?1, observaciones = ?2, verified_by_name = ?4
+         SET estado = 'verificado',
+             verificado_en = ?1,
+             observaciones = ?2,
+             verified_by_name = ?4,
+             company_group = COALESCE(?5, company_group)
          WHERE id = ?3",
-        params![now, observaciones, id, verified_by_name],
+        params![now, observaciones, id, verified_by_name, company_group],
     )?;
     Ok(())
 }
@@ -241,7 +318,7 @@ pub fn mark_as_verificado(conn: &Connection, id: i64, observaciones: &str, verif
 pub fn get_all_pagos(conn: &Connection) -> Result<Vec<PagoBinance>> {
     let mut stmt = conn.prepare(
         "SELECT id, tipo, usuario_remitente, monto, moneda, fecha_correo, estado,
-                observaciones, verificado_en, verified_by_name, creado_en
+                observaciones, verificado_en, verified_by_name, company_group, creado_en
          FROM pagos_binance
          ORDER BY fecha_correo DESC",
     )?;
@@ -260,7 +337,8 @@ pub fn get_all_pagos(conn: &Connection) -> Result<Vec<PagoBinance>> {
             verificado_en: row.get(8)?,
             hora_correo: extract_hora_correo(&fecha_correo),
             verified_by_name: row.get(9)?,
-            creado_en: row.get(10)?,
+            company_group: row.get(10)?,
+            creado_en: row.get(11)?,
         })
     })?.collect::<Result<Vec<_>>>()?;
 
@@ -277,7 +355,7 @@ pub fn get_reports(
 ) -> Result<Vec<PagoBinance>> {
     let mut sql = String::from(
         "SELECT id, tipo, usuario_remitente, monto, moneda, fecha_correo, estado,
-                observaciones, verificado_en, verified_by_name, creado_en
+                observaciones, verificado_en, verified_by_name, company_group, creado_en
          FROM pagos_binance
          WHERE fecha_correo >= ?1 AND fecha_correo <= ?2",
     );
@@ -320,7 +398,8 @@ pub fn get_reports(
             verificado_en: row.get(8)?,
             hora_correo: extract_hora_correo(&fecha_correo),
             verified_by_name: row.get(9)?,
-            creado_en: row.get(10)?,
+            company_group: row.get(10)?,
+            creado_en: row.get(11)?,
         })
     })?.collect::<Result<Vec<_>>>()?;
 
@@ -340,7 +419,7 @@ pub fn get_reports_by_sender(
 
     let mut sql = String::from(
         "SELECT id, tipo, usuario_remitente, monto, moneda, fecha_correo, estado,
-                observaciones, verificado_en, verified_by_name, creado_en
+                observaciones, verificado_en, verified_by_name, company_group, creado_en
          FROM pagos_binance
          WHERE fecha_correo >= ?1 AND fecha_correo <= ?2
            AND usuario_remitente LIKE ?3",
@@ -385,7 +464,8 @@ pub fn get_reports_by_sender(
             verificado_en: row.get(8)?,
             hora_correo: extract_hora_correo(&fecha_correo),
             verified_by_name: row.get(9)?,
-            creado_en: row.get(10)?,
+            company_group: row.get(10)?,
+            creado_en: row.get(11)?,
         })
     })?.collect::<Result<Vec<_>>>()?;
 
