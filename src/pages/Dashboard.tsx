@@ -155,7 +155,7 @@ export default function Dashboard() {
     <div className="max-w-4xl mx-auto">
       <div className="flex justify-between items-center mb-8 border-b border-slate-800 pb-4">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight">Binance Pay Auditor v1.3</h1>
+          <h1 className="text-2xl font-bold tracking-tight">Binance Pay Auditor v1.4</h1>
           <p className="text-slate-400 text-sm">Conciliacion de pagos</p>
         </div>
         <SyncButton onSyncComplete={() => {}} />
