@@ -183,12 +183,14 @@ export default function App() {
               } />
               <Route path="/cambiar-clave" element={
                 auth.isAuthenticated
-                  ? <ChangePassword onPasswordChanged={() => {
-                      setAuth((prev) => ({
-                        ...prev,
-                        user: prev.user ? { ...prev.user, must_change_password: false } : null,
-                      }))
-                    }} />
+                  ? auth.user?.must_change_password
+                    ? <ChangePassword onPasswordChanged={() => {
+                        setAuth((prev) => ({
+                          ...prev,
+                          user: prev.user ? { ...prev.user, must_change_password: false } : null,
+                        }))
+                      }} />
+                    : <Navigate to="/" replace />
                   : <Navigate to="/login" replace />
               } />
               <Route path="/" element={
