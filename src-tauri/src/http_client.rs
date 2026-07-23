@@ -243,8 +243,6 @@ impl HttpClient {
         id: &str,
         updates: &serde_json::Value,
     ) -> Result<serde_json::Value, String> {
-        // The server expects PUT, but we use post_json_value which does POST.
-        // We need a put_json_value helper or use put directly.
         let url = format!("{}/api/users/{}", self.base_url, id);
         let mut req = self.client.put(&url).json(updates);
 
@@ -269,5 +267,46 @@ impl HttpClient {
                 .unwrap_or_else(|_| "unknown".to_string());
             Err(format!("HTTP {}: {}", status.as_u16(), body))
         }
+    }
+
+    pub async fn delete_user(
+        &self,
+        id: &str,
+    ) -> Result<serde_json::Value, String> {
+        let url = format!("{}/api/users/{}", self.base_url, id);
+        let mut req = self.client.delete(&url);
+
+        if let Some(token) = &self.jwt_token {
+            req = req.header("Authorization", format!("Bearer {}", token));
+        }
+
+        let resp = req
+            .send()
+            .await
+            .map_err(|e| format!("HTTP DELETE error: {}", e))?;
+
+        if resp.status().is_success() {
+            resp.json::<serde_json::Value>()
+                .await
+                .map_err(|e| format!("JSON parse error: {}", e))
+        } else {
+            let status = resp.status();
+            let body = resp
+                .text()
+                .await
+                .unwrap_or_else(|_| "unknown".to_string());
+            Err(format!("HTTP {}: {}", status.as_u16(), body))
+        }
+    }
+
+    pub async fn admin_reset_password(
+        &self,
+        id: &str,
+        new_password: &str,
+    ) -> Result<serde_json::Value, String> {
+        let body = serde_json::json!({
+            "new_password": new_password,
+        });
+        self.post_json_value(&format!("/api/users/{}/reset-password", id), &body).await
     }
 }

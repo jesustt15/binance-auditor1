@@ -86,8 +86,14 @@ export const api = {
   createUser: (data: { username: string; password: string; role: string; company_group?: string; station_name?: string }) =>
     invoke<ApiUser>('client_create_user', data),
 
-  updateUser: (id: string, data: { is_active?: boolean; role?: string; company_group?: string; station_name?: string }) =>
+  updateUser: (id: string, data: { username?: string; is_active?: boolean; role?: string; company_group?: string; station_name?: string }) =>
     invoke<ApiUser>('client_update_user', { userId: id, updates: data }),
+
+  deleteUser: (id: string) =>
+    invoke<{ success: boolean }>('client_delete_user', { userId: id }),
+
+  adminResetPassword: (id: string, newPassword: string) =>
+    invoke<{ success: boolean; mensaje: string }>('client_admin_reset_password', { userId: id, newPassword }),
 
   changePassword: (currentPassword: string, newPassword: string) =>
     invoke<{ success: boolean; mensaje: string }>('client_change_password', {

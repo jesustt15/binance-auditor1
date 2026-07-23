@@ -110,6 +110,7 @@ pub struct User {
     pub station_name: Option<String>,
     pub is_active: bool,
     pub must_change_password: bool,
+    pub deleted_at: Option<DateTime<Utc>>,
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
 }
@@ -124,6 +125,7 @@ pub struct UserPublic {
     pub station_name: Option<String>,
     pub is_active: bool,
     pub must_change_password: bool,
+    pub deleted_at: Option<DateTime<Utc>>,
     pub created_at: DateTime<Utc>,
 }
 
@@ -137,6 +139,7 @@ impl From<User> for UserPublic {
             station_name: u.station_name,
             is_active: u.is_active,
             must_change_password: u.must_change_password,
+            deleted_at: u.deleted_at,
             created_at: u.created_at,
         }
     }
@@ -461,11 +464,17 @@ pub struct CreateUserRequest {
 
 #[derive(Debug, Deserialize)]
 pub struct UpdateUserRequest {
+    pub username: Option<String>,
     pub role: Option<String>,
     pub is_active: Option<bool>,
     pub company_group: Option<String>,
     pub station_name: Option<String>,
     pub must_change_password: Option<bool>,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct AdminResetPasswordRequest {
+    pub new_password: String,
 }
 
 #[derive(Debug, Deserialize)]

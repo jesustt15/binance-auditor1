@@ -25,6 +25,7 @@ pub async fn run_migrations(pool: &PgPool) -> Result<(), String> {
         include_str!("../migrations/002_add_hora_correo.sql"),
         include_str!("../migrations/003_add_company_group.sql"),
         include_str!("../migrations/004_must_change_password.sql"),
+        include_str!("../migrations/005_soft_delete_users.sql"),
     ];
 
     for migration_sql in migrations {
@@ -84,9 +85,9 @@ pub async fn create_user(
     must_change_password: bool,
 ) -> Result<User, String> {
     let row = sqlx::query_as::<_, User>(
-        "INSERT INTO users (username, password_hash, role, company_group, station_name, must_change_password)
+         "INSERT INTO users (username, password_hash, role, company_group, station_name, must_change_password)
          VALUES ($1, $2, $3::text, $4, $5, $6)
-         RETURNING id, username, password_hash, role, company_group, station_name, is_active, must_change_password, created_at, updated_at",
+         RETURNING id, username, password_hash, role, company_group, station_name, is_active, must_change_password, deleted_at, created_at, updated_at",
     )
     .bind(username)
     .bind(password_hash)
@@ -108,8 +109,8 @@ pub async fn create_user(
 
 pub async fn find_user_by_username(pool: &PgPool, username: &str) -> Result<Option<User>, String> {
     let row = sqlx::query_as::<_, User>(
-        "SELECT id, username, password_hash, role, company_group, station_name, is_active, must_change_password, created_at, updated_at
-         FROM users WHERE username = $1",
+        "SELECT id, username, password_hash, role, company_group, station_name, is_active, must_change_password, deleted_at, created_at, updated_at
+         FROM users WHERE username = $1 AND deleted_at IS NULL",
     )
     .bind(username)
     .fetch_optional(pool)
@@ -120,8 +121,8 @@ pub async fn find_user_by_username(pool: &PgPool, username: &str) -> Result<Opti
 
 pub async fn find_user_by_id(pool: &PgPool, user_id: Uuid) -> Result<Option<User>, String> {
     let row = sqlx::query_as::<_, User>(
-        "SELECT id, username, password_hash, role, company_group, station_name, is_active, must_change_password, created_at, updated_at
-         FROM users WHERE id = $1",
+        "SELECT id, username, password_hash, role, company_group, station_name, is_active, must_change_password, deleted_at, created_at, updated_at
+         FROM users WHERE id = $1 AND deleted_at IS NULL",
     )
     .bind(user_id)
     .fetch_optional(pool)
@@ -132,8 +133,8 @@ pub async fn find_user_by_id(pool: &PgPool, user_id: Uuid) -> Result<Option<User
 
 pub async fn list_users(pool: &PgPool) -> Result<Vec<User>, String> {
     let rows = sqlx::query_as::<_, User>(
-        "SELECT id, username, password_hash, role, company_group, station_name, is_active, must_change_password, created_at, updated_at
-         FROM users ORDER BY created_at DESC",
+        "SELECT id, username, password_hash, role, company_group, station_name, is_active, must_change_password, deleted_at, created_at, updated_at
+         FROM users WHERE deleted_at IS NULL ORDER BY created_at DESC",
     )
     .fetch_all(pool)
     .await
@@ -144,6 +145,7 @@ pub async fn list_users(pool: &PgPool) -> Result<Vec<User>, String> {
 pub async fn update_user(
     pool: &PgPool,
     user_id: Uuid,
+    username: Option<&str>,
     role: Option<&str>,
     is_active: Option<bool>,
     company_group: Option<&str>,
@@ -152,16 +154,18 @@ pub async fn update_user(
 ) -> Result<User, String> {
     let row = sqlx::query_as::<_, User>(
         "UPDATE users
-         SET role = COALESCE($2::text, role),
-             is_active = COALESCE($3, is_active),
-             company_group = COALESCE($4, company_group),
-             station_name = COALESCE($5, station_name),
-             must_change_password = COALESCE($6, must_change_password),
+         SET username = COALESCE($2, username),
+             role = COALESCE($3::text, role),
+             is_active = COALESCE($4, is_active),
+             company_group = COALESCE($5, company_group),
+             station_name = COALESCE($6, station_name),
+             must_change_password = COALESCE($7, must_change_password),
              updated_at = now()
-         WHERE id = $1
-         RETURNING id, username, password_hash, role, company_group, station_name, is_active, must_change_password, created_at, updated_at",
+         WHERE id = $1 AND deleted_at IS NULL
+         RETURNING id, username, password_hash, role, company_group, station_name, is_active, must_change_password, deleted_at, created_at, updated_at",
     )
     .bind(user_id)
+    .bind(username)
     .bind(role)
     .bind(is_active)
     .bind(company_group)
@@ -169,7 +173,13 @@ pub async fn update_user(
     .bind(must_change_password)
     .fetch_optional(pool)
     .await
-    .map_err(|e| format!("DB error al actualizar usuario: {}", e))?
+    .map_err(|e| {
+        if e.to_string().contains("unique") {
+            format!("El usuario '{}' ya existe", username.unwrap_or(""))
+        } else {
+            format!("DB error al actualizar usuario: {}", e)
+        }
+    })?
     .ok_or("Usuario no encontrado".to_string())?;
     Ok(row)
 }
@@ -189,6 +199,39 @@ pub async fn update_password(
     .execute(pool)
     .await
     .map_err(|e| format!("DB error al actualizar password: {}", e))?;
+    Ok(())
+}
+
+pub async fn delete_user(
+    pool: &PgPool,
+    user_id: Uuid,
+) -> Result<(), String> {
+    sqlx::query(
+        "UPDATE users SET deleted_at = now(), updated_at = now()
+         WHERE id = $1 AND deleted_at IS NULL",
+    )
+    .bind(user_id)
+    .execute(pool)
+    .await
+    .map_err(|e| format!("DB error al eliminar usuario: {}", e))?;
+    Ok(())
+}
+
+pub async fn admin_reset_password(
+    pool: &PgPool,
+    user_id: Uuid,
+    password_hash: &str,
+) -> Result<(), String> {
+    sqlx::query(
+        "UPDATE users
+         SET password_hash = $1, must_change_password = true, updated_at = now()
+         WHERE id = $2 AND deleted_at IS NULL",
+    )
+    .bind(password_hash)
+    .bind(user_id)
+    .execute(pool)
+    .await
+    .map_err(|e| format!("DB error al resetear password: {}", e))?;
     Ok(())
 }
 

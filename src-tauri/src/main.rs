@@ -257,6 +257,31 @@ async fn client_update_user(
     client.update_user(&user_id, &updates).await
 }
 
+#[tauri::command]
+async fn client_delete_user(
+    user_id: String,
+    state: tauri::State<'_, AppState>,
+) -> Result<serde_json::Value, String> {
+    let client = {
+        let guard = state.http_client.lock().map_err(|e| e.to_string())?;
+        guard.as_ref().ok_or("Cliente HTTP no inicializado")?.clone()
+    };
+    client.delete_user(&user_id).await
+}
+
+#[tauri::command]
+async fn client_admin_reset_password(
+    user_id: String,
+    new_password: String,
+    state: tauri::State<'_, AppState>,
+) -> Result<serde_json::Value, String> {
+    let client = {
+        let guard = state.http_client.lock().map_err(|e| e.to_string())?;
+        guard.as_ref().ok_or("Cliente HTTP no inicializado")?.clone()
+    };
+    client.admin_reset_password(&user_id, &new_password).await
+}
+
 // ---------- Original standalone commands (unchanged) ----------
 
 #[tauri::command]
@@ -768,6 +793,8 @@ fn main() {
             client_list_users,
             client_create_user,
             client_update_user,
+            client_delete_user,
+            client_admin_reset_password,
             client_change_password,
             // Standalone commands
             sync_emails,

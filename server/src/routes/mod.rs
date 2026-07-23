@@ -56,7 +56,8 @@ pub fn build_router(state: SharedState) -> Router {
         .route("/api/quarantine/{id}/review", post(review_quarantine_handler))
         // Users (admin)
         .route("/api/users", get(list_users_handler).post(create_user_handler))
-        .route("/api/users/{id}", put(update_user_handler))
+        .route("/api/users/{id}", put(update_user_handler).delete(delete_user_handler))
+        .route("/api/users/{id}/reset-password", post(admin_reset_password_handler))
         .with_state(state)
 }
 
@@ -1439,6 +1440,7 @@ async fn update_user_handler(
     match db::update_user(
         &state.pool,
         id,
+        req.username.as_deref(),
         req.role.as_deref(),
         req.is_active,
         req.company_group.as_deref(),
@@ -1455,13 +1457,102 @@ async fn update_user_handler(
                 "update_user",
                 Some("user"),
                 Some(id),
-                Some(&json!({"role": req.role, "is_active": req.is_active})),
+                Some(&json!({"username": req.username, "role": req.role, "is_active": req.is_active})),
                 None,
                 None,
             )
             .await;
             let public: UserPublic = user.into();
             (StatusCode::OK, Json(public)).into_response()
+        }
+        Err(e) => {
+            let status = if e.contains("ya existe") {
+                StatusCode::CONFLICT
+            } else {
+                StatusCode::INTERNAL_SERVER_ERROR
+            };
+            (status, Json(json!({"error": e}))).into_response()
+        }
+    }
+}
+
+async fn delete_user_handler(
+    State(state): State<SharedState>,
+    auth: AuthUser,
+    Path(id): Path<Uuid>,
+) -> impl IntoResponse {
+    if let Err(e) = require_admin(&auth) {
+        return e.into_response();
+    }
+
+    match db::delete_user(&state.pool, id).await {
+        Ok(_) => {
+            let admin_id = Uuid::parse_str(&auth.user_id).unwrap_or_default();
+            let _ = db::insert_audit_entry(
+                &state.pool,
+                Some(admin_id),
+                "delete_user",
+                Some("user"),
+                Some(id),
+                None,
+                None,
+                None,
+            )
+            .await;
+            (StatusCode::OK, Json(json!({"success": true}))).into_response()
+        }
+        Err(e) => (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            Json(json!({"error": e})),
+        )
+            .into_response(),
+    }
+}
+
+async fn admin_reset_password_handler(
+    State(state): State<SharedState>,
+    auth: AuthUser,
+    Path(id): Path<Uuid>,
+    Json(req): Json<AdminResetPasswordRequest>,
+) -> impl IntoResponse {
+    if let Err(e) = require_admin(&auth) {
+        return e.into_response();
+    }
+
+    if req.new_password.len() < 6 {
+        return (
+            StatusCode::BAD_REQUEST,
+            Json(json!({"error": "La nueva contraseña debe tener al menos 6 caracteres"})),
+        )
+            .into_response();
+    }
+
+    let new_hash = match auth::hash_password(&req.new_password) {
+        Ok(h) => h,
+        Err(e) => {
+            return (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(json!({"error": e})),
+            )
+                .into_response();
+        }
+    };
+
+    match db::admin_reset_password(&state.pool, id, &new_hash).await {
+        Ok(_) => {
+            let admin_id = Uuid::parse_str(&auth.user_id).unwrap_or_default();
+            let _ = db::insert_audit_entry(
+                &state.pool,
+                Some(admin_id),
+                "admin_reset_password",
+                Some("user"),
+                Some(id),
+                Some(&json!({"reset_by": auth.user_id})),
+                None,
+                None,
+            )
+            .await;
+            (StatusCode::OK, Json(json!({"success": true, "mensaje": "Contraseña reseteada correctamente"}))).into_response()
         }
         Err(e) => (
             StatusCode::INTERNAL_SERVER_ERROR,
