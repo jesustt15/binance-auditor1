@@ -21,11 +21,17 @@ export default function Reports() {
     setError(null)
     setExportMsg(null)
     try {
+      const common = {
+        desde,
+        hasta,
+        currentRole: auth.user?.role ?? null,
+        currentUsername: auth.user?.username ?? null,
+      }
       const result = await invoke<PagoBinance[]>(
         remitente.trim() ? 'get_reports_by_sender' : 'get_reports',
         remitente.trim()
-          ? { desde, hasta, remitente: remitente.trim() }
-          : { desde, hasta },
+          ? { ...common, remitente: remitente.trim() }
+          : common,
       )
       setPagos(result)
     } catch (err: any) {

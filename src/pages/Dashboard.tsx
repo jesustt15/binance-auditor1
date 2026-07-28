@@ -1,13 +1,15 @@
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect } from 'react'
 import { invoke } from '@tauri-apps/api/core'
 import SyncButton from '../components/SyncButton'
 import VerificationForm from '../components/VerificationForm'
 import type { PagoBinance, ImportResult } from '../types'
 import { formatFecha } from '../lib/format'
 import { useAuth } from '../App'
+import { useToast } from '../components/Toast'
 
 export default function Dashboard() {
   const { auth } = useAuth()
+  const { toast } = useToast()
   const [pagosBD, setPagosBD] = useState<PagoBinance[] | null>(null)
   const [loadingBD, setLoadingBD] = useState(false)
   const [desdeBD, setDesdeBD] = useState('')
@@ -38,7 +40,7 @@ export default function Dashboard() {
     try {
       const usuario = p.usuario_remitente ?? ''
       if (!usuario) {
-        alert('Los depósitos no pueden verificarse automáticamente')
+        toast('Los depósitos no pueden verificarse automáticamente', 'warning')
         return
       }
       const fecha = p.fecha_correo.slice(0, 10)
@@ -53,10 +55,10 @@ export default function Dashboard() {
       if (result.verificado) {
         if (pagosBD) listarPagos()
       } else {
-        alert(result.mensaje || 'No se pudo verificar el pago')
+        toast(result.mensaje || 'No se pudo verificar el pago', 'warning')
       }
     } catch (err: any) {
-      alert(`Error al verificar: ${err}`)
+      toast(`Error al verificar: ${err}`, 'error')
     } finally {
       setVerificandoId(null)
     }
@@ -84,7 +86,10 @@ export default function Dashboard() {
     setLoadingBD(true)
     setPaginaBD(1)
     try {
-      const args: Record<string, unknown> = {}
+      const args: Record<string, unknown> = {
+        currentRole: auth.user?.role ?? null,
+        currentUsername: auth.user?.username ?? null,
+      }
       if (desdeBD && hastaBD) {
         args.desde = desdeBD
         args.hasta = hastaBD
@@ -100,6 +105,15 @@ export default function Dashboard() {
       setLoadingBD(false)
     }
   }
+
+  // Auto-refresh cada 5 minutos
+  useEffect(() => {
+    listarPagos() // carga inicial
+    const interval = setInterval(() => {
+      listarPagos()
+    }, 5 * 60 * 1000)
+    return () => clearInterval(interval)
+  }, [])
 
   const totalPaginasBD = useMemo(() => pagosBD ? Math.ceil(pagosBD.length / porPaginaBD) : 0, [pagosBD, porPaginaBD])
 

@@ -402,13 +402,30 @@ fn get_reports(
     monto_exacto: Option<f64>,
     monto_min: Option<f64>,
     monto_max: Option<f64>,
+    current_role: Option<String>,
+    current_username: Option<String>,
     state: tauri::State<AppState>,
 ) -> Result<Vec<PagoBinance>, String> {
     let conn = state.db_conn.lock().map_err(|e| e.to_string())?;
     let inicio = format!("{}T00:00:00", desde);
     let fin = format!("{}T23:59:59", hasta);
-    db::get_reports(&conn, &inicio, &fin, monto_exacto, monto_min, monto_max)
-        .map_err(|e| format!("DB error: {}", e))
+    let pagos = db::get_reports(&conn, &inicio, &fin, monto_exacto, monto_min, monto_max)
+        .map_err(|e| format!("DB error: {}", e))?;
+
+    // Cashiers: only see non-verified payments + their own verified ones
+    let is_cashier = current_role.as_deref() == Some("cashier");
+    let username = current_username.as_deref();
+    Ok(if is_cashier {
+        pagos
+            .into_iter()
+            .filter(|p| {
+                p.verified_by_name.is_none()
+                    || p.verified_by_name.as_deref() == username
+            })
+            .collect()
+    } else {
+        pagos
+    })
 }
 
 #[tauri::command]
@@ -419,13 +436,30 @@ fn get_reports_by_sender(
     monto_exacto: Option<f64>,
     monto_min: Option<f64>,
     monto_max: Option<f64>,
+    current_role: Option<String>,
+    current_username: Option<String>,
     state: tauri::State<AppState>,
 ) -> Result<Vec<PagoBinance>, String> {
     let conn = state.db_conn.lock().map_err(|e| e.to_string())?;
     let inicio = format!("{}T00:00:00", desde);
     let fin = format!("{}T23:59:59", hasta);
-    db::get_reports_by_sender(&conn, &inicio, &fin, &remitente, monto_exacto, monto_min, monto_max)
-        .map_err(|e| format!("DB error: {}", e))
+    let pagos = db::get_reports_by_sender(&conn, &inicio, &fin, &remitente, monto_exacto, monto_min, monto_max)
+        .map_err(|e| format!("DB error: {}", e))?;
+
+    // Cashiers: only see non-verified payments + their own verified ones
+    let is_cashier = current_role.as_deref() == Some("cashier");
+    let username = current_username.as_deref();
+    Ok(if is_cashier {
+        pagos
+            .into_iter()
+            .filter(|p| {
+                p.verified_by_name.is_none()
+                    || p.verified_by_name.as_deref() == username
+            })
+            .collect()
+    } else {
+        pagos
+    })
 }
 
 #[derive(Serialize)]
@@ -478,6 +512,8 @@ fn debug_listar_pagos(
     monto_exacto: Option<f64>,
     monto_min: Option<f64>,
     monto_max: Option<f64>,
+    current_role: Option<String>,
+    current_username: Option<String>,
     state: tauri::State<AppState>,
 ) -> Result<Vec<PagoBinance>, String> {
     let conn = state.db_conn.lock().map_err(|e| e.to_string())?;
@@ -491,7 +527,21 @@ fn debug_listar_pagos(
             db::get_all_pagos(&conn).map_err(|e| format!("DB error: {}", e))?
         }
     };
-    Ok(pagos)
+
+    // Cashiers: only see non-verified payments + their own verified ones
+    let is_cashier = current_role.as_deref() == Some("cashier");
+    let username = current_username.as_deref();
+    Ok(if is_cashier {
+        pagos
+            .into_iter()
+            .filter(|p| {
+                p.verified_by_name.is_none() // non-verified (available)
+                    || p.verified_by_name.as_deref() == username // own verified
+            })
+            .collect()
+    } else {
+        pagos
+    })
 }
 
 #[derive(Serialize, Clone)]

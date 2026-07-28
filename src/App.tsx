@@ -7,6 +7,7 @@ import Settings from './pages/Settings'
 import Login from './pages/Login'
 import Users from './pages/Users'
 import ChangePassword from './pages/ChangePassword'
+import { ToastProvider } from './components/Toast'
 import type { AuthState } from './types/auth'
 
 // Contexto de autenticacion
@@ -171,7 +172,8 @@ export default function App() {
 
   return (
     <AuthContext.Provider value={{ auth, setAuth, logout }}>
-      <BrowserRouter>
+      <ToastProvider>
+        <BrowserRouter>
         <div className="min-h-screen bg-slate-900 text-slate-100">
           {auth.isAuthenticated && !auth.user?.must_change_password && <Nav />}
           <main className={auth.isAuthenticated && !auth.user?.must_change_password ? 'p-8' : ''}>
@@ -220,7 +222,8 @@ export default function App() {
             </Routes>
           </main>
         </div>
-      </BrowserRouter>
+        </BrowserRouter>
+      </ToastProvider>
     </AuthContext.Provider>
   )
 }

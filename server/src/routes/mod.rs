@@ -213,7 +213,7 @@ async fn refresh_handler(
 
 async fn list_payments_handler(
     State(state): State<SharedState>,
-    _auth: AuthUser,
+    auth: AuthUser,
     Query(query): Query<PaymentQuery>,
 ) -> impl IntoResponse {
     let desde = query.desde.unwrap_or_else(|| {
@@ -224,6 +224,13 @@ async fn list_payments_handler(
     let hasta = query.hasta.unwrap_or_else(|| {
         Utc::now().format("%Y-%m-%dT23:59:59Z").to_string()
     });
+
+    // Resolve cashier filter: cashiers see only their own verified payments + all available ones
+    let cashier_id = if auth.role == "cashier" {
+        Uuid::parse_str(&auth.user_id).ok()
+    } else {
+        None
+    };
 
     match db::list_payments(
         &state.pool,
@@ -236,8 +243,16 @@ async fn list_payments_handler(
     .await
     {
         Ok(payments) => {
+            let filtered: Vec<_> = if let Some(cid) = cashier_id {
+                payments
+                    .into_iter()
+                    .filter(|p| p.verified_by.is_none() || p.verified_by == Some(cid))
+                    .collect()
+            } else {
+                payments
+            };
             let response: Vec<PaymentResponse> =
-                payments.into_iter().map(PaymentResponse::from).collect();
+                filtered.into_iter().map(PaymentResponse::from).collect();
             (StatusCode::OK, Json(response)).into_response()
         }
         Err(e) => (
@@ -250,7 +265,7 @@ async fn list_payments_handler(
 
 async fn list_payments_by_sender_handler(
     State(state): State<SharedState>,
-    _auth: AuthUser,
+    auth: AuthUser,
     Query(query): Query<BySenderQuery>,
 ) -> impl IntoResponse {
     let desde = query.desde.unwrap_or_else(|| {
@@ -271,6 +286,13 @@ async fn list_payments_by_sender_handler(
             .into_response();
     }
 
+    // Resolve cashier filter: cashiers see only their own verified payments + all available ones
+    let cashier_id = if auth.role == "cashier" {
+        Uuid::parse_str(&auth.user_id).ok()
+    } else {
+        None
+    };
+
     match db::list_payments_by_sender(
         &state.pool,
         &desde,
@@ -283,8 +305,16 @@ async fn list_payments_by_sender_handler(
     .await
     {
         Ok(payments) => {
+            let filtered: Vec<_> = if let Some(cid) = cashier_id {
+                payments
+                    .into_iter()
+                    .filter(|p| p.verified_by.is_none() || p.verified_by == Some(cid))
+                    .collect()
+            } else {
+                payments
+            };
             let response: Vec<PaymentResponse> =
-                payments.into_iter().map(PaymentResponse::from).collect();
+                filtered.into_iter().map(PaymentResponse::from).collect();
             (StatusCode::OK, Json(response)).into_response()
         }
         Err(e) => (
@@ -402,11 +432,22 @@ async fn verify_payment_handler(
 
 async fn get_payment_handler(
     State(state): State<SharedState>,
-    _auth: AuthUser,
+    auth: AuthUser,
     Path(id): Path<Uuid>,
 ) -> impl IntoResponse {
     match db::find_payment_by_id(&state.pool, id).await {
         Ok(Some(p)) => {
+            // Cashiers can only see their own verified payments or non-verified ones
+            if auth.role == "cashier" {
+                let cashier_id = Uuid::parse_str(&auth.user_id).unwrap_or_default();
+                if p.verified_by.is_some() && p.verified_by != Some(cashier_id) {
+                    return (
+                        StatusCode::FORBIDDEN,
+                        Json(json!({"error": "No tienes permiso para ver este pago"})),
+                    )
+                        .into_response();
+                }
+            }
             let response = PaymentResponse::from(p);
             (StatusCode::OK, Json(response)).into_response()
         }

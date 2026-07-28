@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { api } from '../lib/api'
 import type { ApiUser } from '../lib/api'
+import { useToast } from '../components/Toast'
 
 const COMPANY_GROUPS = [
   { value: 'ferreteria_principal', label: 'Ferretería Principal', color: 'bg-blue-950 text-blue-400' },
@@ -17,6 +18,7 @@ type ModalState =
   | null
 
 export default function Users() {
+  const { toast } = useToast()
   const [users, setUsers] = useState<ApiUser[]>([])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -82,7 +84,7 @@ export default function Users() {
     e.preventDefault()
     if (!newUsername || !newPassword) return
     if (newRole === 'cashier' && !newCompanyGroup) {
-      alert('El grupo de empresa es obligatorio para cajeras')
+      toast('El grupo de empresa es obligatorio para cajeras', 'warning')
       return
     }
     setCreating(true)
@@ -101,7 +103,7 @@ export default function Users() {
       setShowCreate(false)
       loadUsers()
     } catch (err: any) {
-      alert(`Error al crear usuario: ${err}`)
+      toast(`Error al crear usuario: ${err}`, 'error')
     } finally {
       setCreating(false)
     }
@@ -122,7 +124,7 @@ export default function Users() {
       setModal(null)
       loadUsers()
     } catch (err: any) {
-      alert(`Error al editar usuario: ${err}`)
+      toast(`Error al editar usuario: ${err}`, 'error')
     } finally {
       setSaving(false)
     }
@@ -132,16 +134,16 @@ export default function Users() {
     e.preventDefault()
     if (!modal || modal.type !== 'reset-password') return
     if (!resetNewPassword || resetNewPassword.length < 6) {
-      alert('La contraseña debe tener al menos 6 caracteres')
+      toast('La contraseña debe tener al menos 6 caracteres', 'warning')
       return
     }
     setResetting(true)
     try {
       await api.adminResetPassword(modal.user.id, resetNewPassword)
       setModal(null)
-      alert('Contraseña reseteada correctamente')
+      toast('Contraseña reseteada correctamente', 'success')
     } catch (err: any) {
-      alert(`Error al resetear contraseña: ${err}`)
+      toast(`Error al resetear contraseña: ${err}`, 'error')
     } finally {
       setResetting(false)
     }
@@ -155,7 +157,7 @@ export default function Users() {
       await api.updateUser(user.id, { is_active: !user.is_active })
       loadUsers()
     } catch (err: any) {
-      alert(`Error al ${action} usuario: ${err}`)
+      toast(`Error al ${action} usuario: ${err}`, 'error')
     } finally {
       setTogglingId(null)
     }
@@ -168,7 +170,7 @@ export default function Users() {
       await api.deleteUser(user.id)
       loadUsers()
     } catch (err: any) {
-      alert(`Error al eliminar usuario: ${err}`)
+      toast(`Error al eliminar usuario: ${err}`, 'error')
     } finally {
       setDeletingId(null)
     }
