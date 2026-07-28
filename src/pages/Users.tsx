@@ -81,6 +81,10 @@ export default function Users() {
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!newUsername || !newPassword) return
+    if (newRole === 'cashier' && !newCompanyGroup) {
+      alert('El grupo de empresa es obligatorio para cajeras')
+      return
+    }
     setCreating(true)
     try {
       await api.createUser({

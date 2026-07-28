@@ -118,7 +118,7 @@ export default function Reports() {
 
       {pagos.length > 0 || error ? (
         <div className="bg-slate-800/50 p-6 rounded-xl border border-slate-700">
-          <ReportTable pagos={pagos} currentCompanyGroup={auth.user?.company_group ?? undefined} />
+          <ReportTable pagos={pagos} />
         </div>
       ) : (
         <div className="text-center text-slate-500 py-12 text-sm">

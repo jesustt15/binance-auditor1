@@ -4,10 +4,9 @@ import { formatFecha } from '../lib/format'
 
 interface Props {
   pagos: PagoBinance[]
-  currentCompanyGroup?: string
 }
 
-export default function ReportTable({ pagos, currentCompanyGroup }: Props) {
+export default function ReportTable({ pagos }: Props) {
   const [pagina, setPagina] = useState(1)
   const [porPagina, setPorPagina] = useState(20)
 
@@ -115,22 +114,17 @@ export default function ReportTable({ pagos, currentCompanyGroup }: Props) {
                 <td className="py-2 px-3 text-slate-500 text-xs">
                   <span className="flex items-center gap-1">
                     <span>{pago.verified_by_name ?? '—'}</span>
-                    {(() => {
-                      const grupo = pago.company_group ?? (
-                        pago.estado === 'verificado' ? currentCompanyGroup : null
-                      )
-                      return grupo ? (
-                        <span className={`px-1 py-0.5 rounded text-[9px] font-medium ${
-                          grupo === 'ferreteria_principal' ? 'bg-blue-950 text-blue-400' :
-                          grupo === 'pintatodo' ? 'bg-yellow-950 text-yellow-400' :
-                          'bg-red-950 text-red-400'
-                        }`}>
-                          {grupo === 'ferreteria_principal' ? 'Ferretería Principal' :
-                           grupo === 'pintatodo' ? 'Pintatodo' :
-                           'Herramientas Brink'}
-                        </span>
-                      ) : null
-                    })()}
+                    {pago.company_group ? (
+                      <span className={`px-1 py-0.5 rounded text-[9px] font-medium ${
+                        pago.company_group === 'ferreteria_principal' ? 'bg-blue-950 text-blue-400' :
+                        pago.company_group === 'pintatodo' ? 'bg-yellow-950 text-yellow-400' :
+                        'bg-red-950 text-red-400'
+                      }`}>
+                        {pago.company_group === 'ferreteria_principal' ? 'Ferretería Principal' :
+                         pago.company_group === 'pintatodo' ? 'Pintatodo' :
+                         'Herramientas Brink'}
+                      </span>
+                    ) : null}
                   </span>
                 </td>
                 <td className="py-2 px-3 text-slate-500 text-xs max-w-xs truncate">

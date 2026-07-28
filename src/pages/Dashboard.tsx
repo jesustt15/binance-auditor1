@@ -471,26 +471,19 @@ export default function Dashboard() {
                         </span>
                       </td>
                       <td className="py-2 pr-2">
-                        {(() => {
-                          const grupo = p.company_group ?? (
-                            p.estado === 'verificado' && p.verified_by_name === auth.user?.username
-                              ? auth.user?.company_group
-                              : null
-                          )
-                          return grupo ? (
-                            <span className={`px-1.5 py-0.5 rounded text-[10px] font-medium ${
-                              grupo === 'ferreteria_principal' ? 'bg-blue-950 text-blue-400' :
-                              grupo === 'pintatodo' ? 'bg-yellow-950 text-yellow-400' :
-                              'bg-red-950 text-red-400'
-                            }`}>
-                              {grupo === 'ferreteria_principal' ? 'Ferretería Principal' :
-                               grupo === 'pintatodo' ? 'Pintatodo' :
-                               'Herramientas Brink'}
-                            </span>
-                          ) : (
-                            <span className="text-slate-600">—</span>
-                          )
-                        })()}
+                        {p.company_group ? (
+                          <span className={`px-1.5 py-0.5 rounded text-[10px] font-medium ${
+                            p.company_group === 'ferreteria_principal' ? 'bg-blue-950 text-blue-400' :
+                            p.company_group === 'pintatodo' ? 'bg-yellow-950 text-yellow-400' :
+                            'bg-red-950 text-red-400'
+                          }`}>
+                            {p.company_group === 'ferreteria_principal' ? 'Ferretería Principal' :
+                             p.company_group === 'pintatodo' ? 'Pintatodo' :
+                             'Herramientas Brink'}
+                          </span>
+                        ) : (
+                          <span className="text-slate-600">—</span>
+                        )}
                       </td>
                       <td className="py-2 pr-2">
                         {p.estado === 'verificado' ? (
