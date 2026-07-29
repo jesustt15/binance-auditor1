@@ -50,19 +50,26 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     ca-certificates \
     && rm -rf /var/lib/apt/lists/*
 
+# Crear usuario no-root para ejecutar el servidor
+RUN groupadd -r auditor && useradd -r -g auditor -d /app -s /sbin/nologin auditor
+
 WORKDIR /app
 
-# Crear directorio para datos persistentes (age_key, temp files)
-RUN mkdir -p /app/data
+# Crear directorio para datos persistentes (age_key, jwt_secret, temp files)
+RUN mkdir -p /app/data && chown -R auditor:auditor /app
 
 # Copiar solo el binario compilado
-COPY --from=builder /app/target/release/binance-auditor-server .
+COPY --from=builder --chown=auditor:auditor /app/target/release/binance-auditor-server .
+
+# Cambiar a usuario no-root
+USER auditor
 
 EXPOSE 8443
 
 # El binario:
 # 1. Lee DATABASE_URL del entorno
 # 2. Ejecuta migraciones (CREATE TABLE IF NOT EXISTS)
-# 3. Crea admin por defecto si no existe
-# 4. Escucha en LISTEN_ADDR
+# 3. Crea admin con password aleatoria si no existe
+# 4. Genera JWT_SECRET aleatorio si no está configurado
+# 5. Escucha en LISTEN_ADDR
 CMD ["./binance-auditor-server"]

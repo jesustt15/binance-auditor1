@@ -10,4 +10,10 @@ export default defineConfig({
     port: 5173,
   },
   envPrefix: ['VITE_', 'TAURI_'],
+  // @ts-ignore — vitest se inyecta en el config de Vite
+  test: {
+    environment: 'jsdom',
+    globals: true,
+    setupFiles: ['./src/test-setup.ts'],
+  },
 })

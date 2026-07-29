@@ -45,7 +45,7 @@ calamine = "0.26"
 
 # Utilities
 tracing = "0.1"
-tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+tracing-subscriber = { version = "0.3", features = ["env-filter", "json"] }
 anyhow = "1"
 thiserror = "2"
 dirs = "6"
