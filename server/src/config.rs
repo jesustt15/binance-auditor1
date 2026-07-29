@@ -19,6 +19,8 @@ pub struct ServerConfig {
     pub age_key_path: String,
     /// IMAP poll interval in seconds (default: 300 = 5 min)
     pub imap_poll_interval_secs: u64,
+    /// CORS allowed origins (comma-separated). Default: localhost:1420 for Tauri dev
+    pub cors_allowed_origins: Vec<String>,
 }
 
 impl ServerConfig {
@@ -27,22 +29,52 @@ impl ServerConfig {
         let database_url = std::env::var("DATABASE_URL")
             .unwrap_or_else(|_| "postgres://auditor:auditor@localhost:5432/auditor_db".to_string());
 
-        let jwt_secret = std::env::var("JWT_SECRET").unwrap_or_else(|_| {
-            // NOTA: en produccion esto DEBE ser un secret fuerte. El default de 32 bytes
-            // es solo para desarrollo local.
-            "CHANGE_ME_IN_PRODUCTION_32_BYTES_MINIMUM!!".to_string()
-        });
-
-        // Warn if using default secret
-        if jwt_secret == "CHANGE_ME_IN_PRODUCTION_32_BYTES_MINIMUM!!" {
-            eprintln!("[WARN] Usando JWT_SECRET por defecto. Configuralo en produccion!");
-        }
-        if jwt_secret.len() < 32 {
-            return Err(format!(
-                "JWT_SECRET debe tener al menos 32 caracteres (tiene {})",
-                jwt_secret.len()
-            ));
-        }
+        // JWT secret: usar env var o generar uno aleatorio persistente.
+        // NUNCA usar un default inseguro.
+        let jwt_secret = match std::env::var("JWT_SECRET") {
+            Ok(secret) if secret.len() >= 32 => secret,
+            Ok(secret) => {
+                return Err(format!(
+                    "JWT_SECRET debe tener al menos 32 caracteres (tiene {}). \
+                     Genera uno con: openssl rand -hex 32",
+                    secret.len()
+                ));
+            }
+            Err(_) => {
+                // No env var: generar o cargar secreto persistente
+                let data_dir = get_data_dir();
+                let jwt_file = data_dir.join("jwt_secret");
+                if jwt_file.exists() {
+                    let saved = std::fs::read_to_string(&jwt_file)
+                        .map_err(|e| format!("Error leyendo jwt_secret persistente: {}", e))?;
+                    let trimmed = saved.trim().to_string();
+                    if trimmed.len() < 32 {
+                        return Err(format!(
+                            "jwt_secret persistente muy corto ({} chars). \
+                             Borra el archivo y reinicia para generar uno nuevo.",
+                            trimmed.len()
+                        ));
+                    }
+                    trimmed
+                } else {
+                    // Generar secreto aleatorio de 64 bytes (128 caracteres hex)
+                    use rand::Rng;
+                    let mut rng = rand::thread_rng();
+                    let secret_hex: String = (0..64)
+                        .map(|_| format!("{:02x}", rng.gen::<u8>()))
+                        .collect();
+                    std::fs::write(&jwt_file, &secret_hex)
+                        .map_err(|e| format!("Error guardando jwt_secret: {}", e))?;
+                    tracing::warn!("================================================================");
+                    tracing::warn!("  JWT_SECRET generado automaticamente y guardado en:");
+                    tracing::warn!("  {}", jwt_file.display());
+                    tracing::warn!("  Respaldalo. Si lo perdes, todos los tokens quedan invalidos.");
+                    tracing::warn!("================================================================");
+                    eprintln!("[JWT-SECRET] Generado nuevo secreto en {}", jwt_file.display());
+                    secret_hex
+                }
+            }
+        };
 
         let listen_addr =
             std::env::var("LISTEN_ADDR").unwrap_or_else(|_| "0.0.0.0:8443".to_string());
@@ -58,6 +90,13 @@ impl ServerConfig {
             .and_then(|v| v.parse::<u64>().ok())
             .unwrap_or(300); // 5 minutes default
 
+        let cors_allowed_origins = std::env::var("CORS_ALLOWED_ORIGINS")
+            .unwrap_or_else(|_| "http://localhost:1420,tauri://localhost".to_string())
+            .split(',')
+            .map(|s| s.trim().to_string())
+            .filter(|s| !s.is_empty())
+            .collect();
+
         Ok(ServerConfig {
             database_url,
             jwt_secret,
@@ -66,17 +105,25 @@ impl ServerConfig {
             tls_key_path,
             age_key_path,
             imap_poll_interval_secs,
+            cors_allowed_origins,
         })
     }
 }
 
-fn get_default_age_key_path() -> String {
+fn get_data_dir() -> PathBuf {
     let app_data = std::env::var("APPDATA")
         .or_else(|_| std::env::var("LOCALAPPDATA"))
         .unwrap_or_else(|_| ".".to_string());
     let dir = PathBuf::from(app_data).join("binance-auditor-server");
     let _ = std::fs::create_dir_all(&dir);
-    dir.join("age_key.txt").to_string_lossy().to_string()
+    dir
+}
+
+fn get_default_age_key_path() -> String {
+    get_data_dir()
+        .join("age_key.txt")
+        .to_string_lossy()
+        .to_string()
 }
 
 /// Genera una clave age si no existe, o la carga del disco

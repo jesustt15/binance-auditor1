@@ -11,12 +11,28 @@ pub struct HttpClient {
     jwt_token: Option<String>,
 }
 
+/// Extrae un mensaje de error limpio del body JSON del servidor.
+/// Si el body es `{"error": "Credenciales invalidas"}`, devuelve `"Credenciales invalidas"`.
+/// Si no se puede parsear, devuelve el status code como fallback.
+fn extract_error(status: reqwest::StatusCode, body: &str) -> String {
+    if let Ok(parsed) = serde_json::from_str::<serde_json::Value>(body) {
+        if let Some(msg) = parsed.get("error").and_then(|v| v.as_str()) {
+            return msg.to_string();
+        }
+    }
+    // Fallback: solo el codigo HTTP, sin leak del body crudo
+    format!("Error del servidor (HTTP {})", status.as_u16())
+}
+
 #[allow(dead_code)]
 impl HttpClient {
-    pub fn new(base_url: &str) -> Result<Self, String> {
+    /// Crea un nuevo cliente HTTP.
+    /// `verify_tls`: false para aceptar certificados autofirmados (LAN con IP).
+    /// Solo deshabilitar si el servidor usa TLS autofirmado en red local.
+    pub fn new(base_url: &str, verify_tls: bool) -> Result<Self, String> {
         let client = reqwest::Client::builder()
             .timeout(Duration::from_secs(30))
-            .danger_accept_invalid_certs(true) // Para desarrollo LAN con TLS autofirmado
+            .danger_accept_invalid_certs(!verify_tls)
             .build()
             .map_err(|e| format!("Error creando HTTP client: {}", e))?;
 
@@ -63,7 +79,7 @@ impl HttpClient {
                 .text()
                 .await
                 .unwrap_or_else(|_| "unknown".to_string());
-            Err(format!("HTTP {}: {}", status.as_u16(), body))
+            Err(extract_error(status, &body))
         }
     }
 
@@ -94,7 +110,7 @@ impl HttpClient {
                 .text()
                 .await
                 .unwrap_or_else(|_| "unknown".to_string());
-            Err(format!("HTTP {}: {}", status.as_u16(), body))
+            Err(extract_error(status, &body))
         }
     }
 
@@ -125,7 +141,7 @@ impl HttpClient {
                 .text()
                 .await
                 .unwrap_or_else(|_| "unknown".to_string());
-            Err(format!("HTTP {}: {}", status.as_u16(), body))
+            Err(extract_error(status, &body))
         }
     }
 
@@ -265,7 +281,7 @@ impl HttpClient {
                 .text()
                 .await
                 .unwrap_or_else(|_| "unknown".to_string());
-            Err(format!("HTTP {}: {}", status.as_u16(), body))
+            Err(extract_error(status, &body))
         }
     }
 
@@ -295,7 +311,7 @@ impl HttpClient {
                 .text()
                 .await
                 .unwrap_or_else(|_| "unknown".to_string());
-            Err(format!("HTTP {}: {}", status.as_u16(), body))
+            Err(extract_error(status, &body))
         }
     }
 

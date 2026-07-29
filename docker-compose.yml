@@ -10,8 +10,8 @@
 #
 # El servidor:
 #   - Ejecuta las migraciones automáticamente al arrancar
-#   - Crea el usuario admin por defecto (admin / admin123)
-#   - Escucha en el puerto 8443
+#   - Crea usuario admin con contraseña aleatoria (capturar con: docker compose logs server | grep ADMIN-PASSWORD)
+#   - Escucha en el puerto 8443 (HTTP, o TLS si se configuran TLS_CERT_PATH y TLS_KEY_PATH)
 # =============================================================================
 
 services:
@@ -53,10 +53,17 @@ services:
       AGE_KEY_PATH: /app/data/age_key.txt
       IMAP_POLL_INTERVAL_SECS: ${IMAP_POLL_INTERVAL_SECS:-300}
       RUST_LOG: ${RUST_LOG:-binance_auditor_server=info,tower_http=info}
+      CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:-http://localhost:1420,tauri://localhost}
     ports:
       - "${LISTEN_PORT:-8443}:8443"
     volumes:
       - server-data:/app/data
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:8443/health || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 20s
     depends_on:
       postgres:
         condition: service_healthy

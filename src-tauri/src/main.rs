@@ -782,8 +782,15 @@ fn main() {
 
     let http_client = if is_client_mode {
         let server_url = config.server_url().unwrap_or("https://localhost:8443");
+        let verify_tls = !std::env::var("AUDITOR_NO_TLS_VERIFY")
+            .map(|v| v == "1" || v.eq_ignore_ascii_case("true"))
+            .unwrap_or(false);
+        if !verify_tls {
+            eprintln!("[CLIENT] ADVERTENCIA: Verificacion TLS deshabilitada (AUDITOR_NO_TLS_VERIFY=true).");
+            eprintln!("[CLIENT] Solo usar en LAN con certificados autofirmados.");
+        }
         eprintln!("[CLIENT] Conectando a servidor: {}", server_url);
-        HttpClient::new(server_url).ok()
+        HttpClient::new(server_url, verify_tls).ok()
     } else {
         None
     };

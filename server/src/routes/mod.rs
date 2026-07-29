@@ -8,6 +8,7 @@ use axum::{
 use chrono::{NaiveDate, Utc};
 use serde_json::json;
 use std::sync::Arc;
+use tower_governor::{governor::GovernorConfigBuilder, GovernorLayer};
 use uuid::Uuid;
 
 use crate::auth::{self, AuthUser, require_admin};
@@ -24,12 +25,31 @@ pub struct AppState {
 
 pub type SharedState = Arc<AppState>;
 
-/// Construye el router de la API REST
+/// Construye el router de la API REST con rate limiting
 pub fn build_router(state: SharedState) -> Router {
-    Router::new()
-        // Auth (public)
+    // Rate limiting estricto para auth (anti brute-force): 5 intentos burst, 1/seg
+    let auth_gov_conf = GovernorConfigBuilder::default()
+        .per_second(1)
+        .burst_size(5)
+        .finish()
+        .expect("Failed to build auth rate limiter config");
+
+    // Rate limiting moderado para todas las demas rutas: 30 req/s con burst 60
+    let api_gov_conf = GovernorConfigBuilder::default()
+        .per_second(30)
+        .burst_size(60)
+        .finish()
+        .expect("Failed to build API rate limiter config");
+
+    let auth_routes = Router::new()
         .route("/api/auth/login", post(login_handler))
         .route("/api/auth/refresh", post(refresh_handler))
+        .layer(GovernorLayer::new(auth_gov_conf))
+        .with_state(Arc::clone(&state));
+
+    let api_routes = Router::new()
+        // Health check (no auth)
+        .route("/health", get(health_handler))
         // Payments
         .route("/api/payments", get(list_payments_handler))
         .route("/api/payments/by-sender", get(list_payments_by_sender_handler))
@@ -39,7 +59,6 @@ pub fn build_router(state: SharedState) -> Router {
         // Sync
         .route("/api/sync/status", get(sync_status_handler))
         .route("/api/sync/trigger", post(trigger_sync_handler))
-        // IMAP credentials (admin)
         // Change password (authenticated)
         .route("/api/auth/change-password", post(change_password_handler))
         // IMAP
@@ -58,7 +77,56 @@ pub fn build_router(state: SharedState) -> Router {
         .route("/api/users", get(list_users_handler).post(create_user_handler))
         .route("/api/users/{id}", put(update_user_handler).delete(delete_user_handler))
         .route("/api/users/{id}/reset-password", post(admin_reset_password_handler))
-        .with_state(state)
+        .layer(GovernorLayer::new(api_gov_conf))
+        .with_state(state);
+
+    auth_routes.merge(api_routes)
+}
+
+// ===================== HELPERS =====================
+
+/// Loguea el error real y devuelve un 500 genérico al cliente (sin leak de BD)
+fn internal_error(context: &str, err: &str) -> axum::response::Response {
+    tracing::error!("{}: {}", context, err);
+    (StatusCode::INTERNAL_SERVER_ERROR, Json(json!({"error": "Error interno del servidor"}))).into_response()
+}
+
+/// Valida complejidad de contraseña. Retorna Some(mensaje) si es inválida.
+fn validate_password(password: &str) -> Option<&'static str> {
+    if password.len() < 8 {
+        return Some("La contraseña debe tener al menos 8 caracteres");
+    }
+    let has_upper = password.chars().any(|c| c.is_uppercase());
+    let has_lower = password.chars().any(|c| c.is_lowercase());
+    let has_digit = password.chars().any(|c| c.is_ascii_digit());
+    let has_special = password.chars().any(|c| !c.is_alphanumeric());
+    if !has_upper || !has_lower || !has_digit || !has_special {
+        return Some("La contraseña debe incluir mayúsculas, minúsculas, números y caracteres especiales");
+    }
+    None
+}
+
+// ===================== HEALTH =====================
+
+/// Health check para Docker / load balancers.
+/// Verifica conectividad con la base de datos.
+async fn health_handler(
+    State(state): State<SharedState>,
+) -> impl IntoResponse {
+    // Verificar que la DB responde
+    let db_ok = sqlx::query("SELECT 1")
+        .fetch_one(&state.pool)
+        .await
+        .is_ok();
+
+    if db_ok {
+        (StatusCode::OK, Json(json!({"status": "ok", "db": "connected"})))
+    } else {
+        (
+            StatusCode::SERVICE_UNAVAILABLE,
+            Json(json!({"status": "degraded", "db": "disconnected"})),
+        )
+    }
 }
 
 // ===================== AUTH =====================
@@ -77,11 +145,7 @@ async fn login_handler(
                 .into_response();
         }
         Err(e) => {
-            return (
-                StatusCode::INTERNAL_SERVER_ERROR,
-                Json(json!({"error": e})),
-            )
-                .into_response();
+            return internal_error("Error buscando usuario en login", &e);
         }
     };
 
@@ -257,7 +321,7 @@ async fn list_payments_handler(
         }
         Err(e) => (
             StatusCode::INTERNAL_SERVER_ERROR,
-            Json(json!({"error": e})),
+            Json(json!({"error": "Error interno del servidor"})),
         )
             .into_response(),
     }
@@ -319,7 +383,7 @@ async fn list_payments_by_sender_handler(
         }
         Err(e) => (
             StatusCode::INTERNAL_SERVER_ERROR,
-            Json(json!({"error": e})),
+            Json(json!({"error": "Error interno del servidor"})),
         )
             .into_response(),
     }
@@ -361,7 +425,7 @@ async fn verify_payment_handler(
         Err(e) => {
             return (
                 StatusCode::INTERNAL_SERVER_ERROR,
-                Json(json!({"error": e})),
+                Json(json!({"error": "Error interno del servidor"})),
             )
                 .into_response();
         }
@@ -458,7 +522,7 @@ async fn get_payment_handler(
             .into_response(),
         Err(e) => (
             StatusCode::INTERNAL_SERVER_ERROR,
-            Json(json!({"error": e})),
+            Json(json!({"error": "Error interno del servidor"})),
         )
             .into_response(),
     }
@@ -508,7 +572,7 @@ async fn quick_verify_handler(
             } else {
                 StatusCode::INTERNAL_SERVER_ERROR
             };
-            (status, Json(json!({"error": e}))).into_response()
+            (status, Json(json!({"error": "Error interno del servidor"}))).into_response()
         }
     }
 }
@@ -565,11 +629,13 @@ async fn trigger_sync_handler(
             })),
         )
             .into_response(),
-        Err(e) => (
-            StatusCode::INTERNAL_SERVER_ERROR,
-            Json(json!({"success": false, "error": e})),
-        )
-            .into_response(),
+        Err(e) => {
+            tracing::error!("Error verificando pago: {}", e);
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(json!({"success": false, "error": "Error interno del servidor"})),
+            ).into_response()
+        },
     }
 }
 
@@ -595,7 +661,7 @@ async fn get_imap_config_handler(
             .into_response(),
         Err(e) => (
             StatusCode::INTERNAL_SERVER_ERROR,
-            Json(json!({"error": e})),
+            Json(json!({"error": "Error interno del servidor"})),
         )
             .into_response(),
     }
@@ -614,9 +680,10 @@ async fn put_imap_config_handler(
     let encrypted = match config::encrypt_with_age(&state.age_identity, &req.password) {
         Ok(e) => e,
         Err(err) => {
+            tracing::error!("Error encriptando credenciales IMAP: {}", err);
             return (
                 StatusCode::INTERNAL_SERVER_ERROR,
-                Json(json!({"error": format!("Error encriptando: {}", err)})),
+                Json(json!({"error": "Error interno del servidor"})),
             )
                 .into_response();
         }
@@ -645,7 +712,7 @@ async fn put_imap_config_handler(
         }
         Err(e) => (
             StatusCode::INTERNAL_SERVER_ERROR,
-            Json(json!({"error": e})),
+            Json(json!({"error": "Error interno del servidor"})),
         )
             .into_response(),
     }
@@ -1188,7 +1255,7 @@ async fn export_xlsx_handler(
         Err(e) => {
             return (
                 StatusCode::INTERNAL_SERVER_ERROR,
-                Json(json!({"error": e})),
+                Json(json!({"error": "Error interno del servidor"})),
             )
                 .into_response();
         }
@@ -1207,7 +1274,7 @@ async fn export_xlsx_handler(
             .into_response(),
         Err(e) => (
             StatusCode::INTERNAL_SERVER_ERROR,
-            Json(json!({"error": e})),
+            Json(json!({"error": "Error interno del servidor"})),
         )
             .into_response(),
     }
@@ -1321,7 +1388,7 @@ async fn audit_log_handler(
         Ok(entries) => (StatusCode::OK, Json(entries)).into_response(),
         Err(e) => (
             StatusCode::INTERNAL_SERVER_ERROR,
-            Json(json!({"error": e})),
+            Json(json!({"error": "Error interno del servidor"})),
         )
             .into_response(),
     }
@@ -1344,7 +1411,7 @@ async fn list_quarantine_handler(
         Ok(entries) => (StatusCode::OK, Json(entries)).into_response(),
         Err(e) => (
             StatusCode::INTERNAL_SERVER_ERROR,
-            Json(json!({"error": e})),
+            Json(json!({"error": "Error interno del servidor"})),
         )
             .into_response(),
     }
@@ -1379,7 +1446,7 @@ async fn review_quarantine_handler(
         }
         Err(e) => (
             StatusCode::INTERNAL_SERVER_ERROR,
-            Json(json!({"error": e})),
+            Json(json!({"error": "Error interno del servidor"})),
         )
             .into_response(),
     }
@@ -1402,7 +1469,7 @@ async fn list_users_handler(
         }
         Err(e) => (
             StatusCode::INTERNAL_SERVER_ERROR,
-            Json(json!({"error": e})),
+            Json(json!({"error": "Error interno del servidor"})),
         )
             .into_response(),
     }
@@ -1422,7 +1489,7 @@ async fn create_user_handler(
         Err(e) => {
             return (
                 StatusCode::INTERNAL_SERVER_ERROR,
-                Json(json!({"error": e})),
+                Json(json!({"error": "Error interno del servidor"})),
             )
                 .into_response();
         }
@@ -1463,7 +1530,7 @@ async fn create_user_handler(
             } else {
                 StatusCode::INTERNAL_SERVER_ERROR
             };
-            (status, Json(json!({"error": e}))).into_response()
+            (status, Json(json!({"error": "Error interno del servidor"}))).into_response()
         }
     }
 }
@@ -1512,7 +1579,7 @@ async fn update_user_handler(
             } else {
                 StatusCode::INTERNAL_SERVER_ERROR
             };
-            (status, Json(json!({"error": e}))).into_response()
+            (status, Json(json!({"error": "Error interno del servidor"}))).into_response()
         }
     }
 }
@@ -1544,7 +1611,7 @@ async fn delete_user_handler(
         }
         Err(e) => (
             StatusCode::INTERNAL_SERVER_ERROR,
-            Json(json!({"error": e})),
+            Json(json!({"error": "Error interno del servidor"})),
         )
             .into_response(),
     }
@@ -1560,10 +1627,10 @@ async fn admin_reset_password_handler(
         return e.into_response();
     }
 
-    if req.new_password.len() < 6 {
+    if let Some(msg) = validate_password(&req.new_password) {
         return (
             StatusCode::BAD_REQUEST,
-            Json(json!({"error": "La nueva contraseña debe tener al menos 6 caracteres"})),
+            Json(json!({"error": msg})),
         )
             .into_response();
     }
@@ -1573,7 +1640,7 @@ async fn admin_reset_password_handler(
         Err(e) => {
             return (
                 StatusCode::INTERNAL_SERVER_ERROR,
-                Json(json!({"error": e})),
+                Json(json!({"error": "Error interno del servidor"})),
             )
                 .into_response();
         }
@@ -1597,7 +1664,7 @@ async fn admin_reset_password_handler(
         }
         Err(e) => (
             StatusCode::INTERNAL_SERVER_ERROR,
-            Json(json!({"error": e})),
+            Json(json!({"error": "Error interno del servidor"})),
         )
             .into_response(),
     }
@@ -1632,7 +1699,7 @@ async fn change_password_handler(
         Err(e) => {
             return (
                 StatusCode::INTERNAL_SERVER_ERROR,
-                Json(json!({"error": e})),
+                Json(json!({"error": "Error interno del servidor"})),
             )
                 .into_response();
         }
@@ -1650,11 +1717,11 @@ async fn change_password_handler(
         }
     }
 
-    // Validate new password length
-    if req.new_password.len() < 6 {
+    // Validate new password complexity
+    if let Some(msg) = validate_password(&req.new_password) {
         return (
             StatusCode::BAD_REQUEST,
-            Json(json!({"error": "La nueva contraseña debe tener al menos 6 caracteres"})),
+            Json(json!({"error": msg})),
         )
             .into_response();
     }
@@ -1665,7 +1732,7 @@ async fn change_password_handler(
         Err(e) => {
             return (
                 StatusCode::INTERNAL_SERVER_ERROR,
-                Json(json!({"error": e})),
+                Json(json!({"error": "Error interno del servidor"})),
             )
                 .into_response();
         }
@@ -1693,7 +1760,7 @@ async fn change_password_handler(
         }
         Err(e) => (
             StatusCode::INTERNAL_SERVER_ERROR,
-            Json(json!({"error": e})),
+            Json(json!({"error": "Error interno del servidor"})),
         )
             .into_response(),
     }

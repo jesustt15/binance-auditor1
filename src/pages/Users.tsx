@@ -21,7 +21,6 @@ export default function Users() {
   const { toast } = useToast()
   const [users, setUsers] = useState<ApiUser[]>([])
   const [loading, setLoading] = useState(false)
-  const [error, setError] = useState<string | null>(null)
 
   // Create form state
   const [showCreate, setShowCreate] = useState(false)
@@ -51,12 +50,12 @@ export default function Users() {
 
   const loadUsers = async () => {
     setLoading(true)
-    setError(null)
     try {
       const result = await api.listUsers()
       setUsers(result)
-    } catch (err: any) {
-      setError(`Error al cargar usuarios: ${err}`)
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err ?? 'Error al cargar usuarios')
+      toast(msg, 'error')
     } finally {
       setLoading(false)
     }
@@ -102,8 +101,9 @@ export default function Users() {
       setNewStation('')
       setShowCreate(false)
       loadUsers()
-    } catch (err: any) {
-      toast(`Error al crear usuario: ${err}`, 'error')
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err ?? 'Error')
+      toast(msg, 'error')
     } finally {
       setCreating(false)
     }
@@ -123,8 +123,9 @@ export default function Users() {
       })
       setModal(null)
       loadUsers()
-    } catch (err: any) {
-      toast(`Error al editar usuario: ${err}`, 'error')
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err ?? 'Error al editar usuario')
+      toast(msg, 'error')
     } finally {
       setSaving(false)
     }
@@ -133,8 +134,16 @@ export default function Users() {
   const handleResetPassword = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!modal || modal.type !== 'reset-password') return
-    if (!resetNewPassword || resetNewPassword.length < 6) {
-      toast('La contraseña debe tener al menos 6 caracteres', 'warning')
+    if (!resetNewPassword || resetNewPassword.length < 8) {
+      toast('La contraseña debe tener al menos 8 caracteres', 'warning')
+      return
+    }
+    const hasUpper = /[A-Z]/.test(resetNewPassword)
+    const hasLower = /[a-z]/.test(resetNewPassword)
+    const hasDigit = /\d/.test(resetNewPassword)
+    const hasSpecial = /[^A-Za-z0-9]/.test(resetNewPassword)
+    if (!hasUpper || !hasLower || !hasDigit || !hasSpecial) {
+      toast('La contraseña debe incluir mayúsculas, minúsculas, números y caracteres especiales', 'warning')
       return
     }
     setResetting(true)
@@ -142,8 +151,9 @@ export default function Users() {
       await api.adminResetPassword(modal.user.id, resetNewPassword)
       setModal(null)
       toast('Contraseña reseteada correctamente', 'success')
-    } catch (err: any) {
-      toast(`Error al resetear contraseña: ${err}`, 'error')
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err ?? 'Error al resetear contraseña')
+      toast(msg, 'error')
     } finally {
       setResetting(false)
     }
@@ -156,8 +166,9 @@ export default function Users() {
     try {
       await api.updateUser(user.id, { is_active: !user.is_active })
       loadUsers()
-    } catch (err: any) {
-      toast(`Error al ${action} usuario: ${err}`, 'error')
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err ?? `Error al ${action} usuario`)
+      toast(msg, 'error')
     } finally {
       setTogglingId(null)
     }
@@ -169,8 +180,9 @@ export default function Users() {
     try {
       await api.deleteUser(user.id)
       loadUsers()
-    } catch (err: any) {
-      toast(`Error al eliminar usuario: ${err}`, 'error')
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err ?? 'Error al eliminar usuario')
+      toast(msg, 'error')
     } finally {
       setDeletingId(null)
     }
@@ -263,15 +275,11 @@ export default function Users() {
         </form>
       )}
 
-      {error && (
-        <p className="mb-4 text-sm text-rose-400">{error}</p>
-      )}
-
       {loading && (
         <p className="text-slate-500 text-sm">Cargando usuarios...</p>
       )}
 
-      {!loading && users.length === 0 && !error && (
+      {!loading && users.length === 0 && (
         <p className="text-slate-500 text-sm">No hay usuarios registrados.</p>
       )}
 

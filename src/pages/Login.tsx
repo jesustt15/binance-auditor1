@@ -1,5 +1,6 @@
 import { useState, type FormEvent } from 'react'
 import { invoke } from '@tauri-apps/api/core'
+import { useToast } from '../components/Toast'
 import type { AuthState } from '../types/auth'
 
 interface Props {
@@ -10,11 +11,10 @@ export default function Login({ onLogin }: Props) {
   const [username, setUsername] = useState('')
   const [password, setPassword] = useState('')
   const [loading, setLoading] = useState(false)
-  const [error, setError] = useState<string | null>(null)
+  const { toast } = useToast()
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault()
-    setError(null)
     setLoading(true)
 
     try {
@@ -42,8 +42,9 @@ export default function Login({ onLogin }: Props) {
         isLoading: false,
         error: null,
       })
-    } catch (err: any) {
-      setError(typeof err === 'string' ? err : err?.message || 'Error de autenticacion')
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err ?? 'Error de autenticacion')
+      toast(msg, 'error')
     } finally {
       setLoading(false)
     }
@@ -93,10 +94,6 @@ export default function Login({ onLogin }: Props) {
           >
             {loading ? 'Autenticando...' : 'Iniciar Sesion'}
           </button>
-
-          {error && (
-            <p className="text-sm text-rose-400 text-center">{error}</p>
-          )}
         </form>
       </div>
     </div>

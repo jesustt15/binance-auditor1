@@ -6,8 +6,10 @@ mod imap_sync;
 mod models;
 mod routes;
 
+use std::net::SocketAddr;
 use std::sync::Arc;
-use tower_http::cors::{Any, CorsLayer};
+use axum::extract::DefaultBodyLimit;
+use tower_http::cors::{AllowOrigin, Any, CorsLayer};
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 
 #[tokio::main]
@@ -58,13 +60,23 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         age_identity: age_identity.clone(),
     });
 
-    // Build router
+    // Build CORS layer from configured allowed origins
+    let allowed_origins = config.cors_allowed_origins.clone();
+    let origins: Vec<http::HeaderValue> = allowed_origins
+        .iter()
+        .map(|o| o.parse().expect("Invalid CORS origin"))
+        .collect();
     let cors = CorsLayer::new()
-        .allow_origin(Any)
+        .allow_origin(AllowOrigin::list(origins))
         .allow_methods(Any)
         .allow_headers(Any);
 
-    let app = routes::build_router(shared_state).layer(cors);
+    tracing::info!("CORS allowed origins: {:?}", allowed_origins);
+
+    // Global body limit: 20MB para prevenir DoS por uploads enormes
+    let app = routes::build_router(shared_state)
+        .layer(DefaultBodyLimit::max(20 * 1024 * 1024))
+        .layer(cors);
 
     // Inject the JWT secret into the request extensions so AuthUser extractor can use it
     let jwt_secret = Arc::new(config.jwt_secret.clone());
@@ -86,27 +98,54 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let addr = config.listen_addr.clone();
     tracing::info!("Servidor escuchando en {}", addr);
 
-    let listener = tokio::net::TcpListener::bind(&addr).await?;
+    // Graceful shutdown signal (SIGTERM / Ctrl+C)
+    let shutdown_signal = async {
+        tokio::signal::ctrl_c()
+            .await
+            .expect("Failed to install Ctrl+C handler");
+        tracing::info!("Señal de apagado recibida. Cerrando servidor gracefulmente...");
+    };
 
     match (config.tls_cert_path.as_deref(), config.tls_key_path.as_deref()) {
-        (Some(cert), Some(key)) => {
-            tracing::info!("Usando TLS con certificado: {}", cert);
-            // Read cert and key
-            let cert_pem = std::fs::read_to_string(cert)?;
-            let key_pem = std::fs::read_to_string(key)?;
+        (Some(cert_path), Some(key_path)) => {
+            tracing::info!("TLS habilitado — certificado: {}", cert_path);
+            let tls_config = axum_server::tls_rustls::RustlsConfig::from_pem_file(
+                cert_path.to_string(),
+                key_path.to_string(),
+            )
+            .await?;
 
-            // For TLS with axum, we need axum_server or rustls
-            // Simple approach: use axum_server
-            // But since axum_server is not in deps, let's use a simpler approach:
-            // Just serve HTTP for now, with a warning
-            tracing::warn!("TLS config detectado pero axum_server no esta en dependencias. Sirviendo HTTP.");
-            axum::serve(listener, app).await?;
+            let handle = axum_server::Handle::new();
+            let shutdown_handle = handle.clone();
+
+            // Spawn shutdown listener
+            tokio::spawn(async move {
+                tokio::signal::ctrl_c().await.ok();
+                tracing::info!("Apagando servidor TLS...");
+                shutdown_handle.shutdown();
+            });
+
+            let socket = tokio::net::TcpListener::bind(&addr).await?;
+            axum_server::from_tcp_rustls(socket.into_std()?, tls_config)
+                .handle(handle)
+                .serve(app.into_make_service_with_connect_info::<SocketAddr>())
+                .await?;
         }
         _ => {
             tracing::warn!("Sin TLS configurado — sirviendo HTTP (solo para desarrollo LAN).");
-            axum::serve(listener, app).await?;
+            tracing::info!(
+                "Para habilitar TLS, configurá TLS_CERT_PATH y TLS_KEY_PATH con rutas a archivos PEM."
+            );
+            let listener = tokio::net::TcpListener::bind(&addr).await?;
+            axum::serve(
+                listener,
+                app.into_make_service_with_connect_info::<SocketAddr>(),
+            )
+            .with_graceful_shutdown(shutdown_signal)
+            .await?;
         }
     }
 
+    tracing::info!("Servidor detenido.");
     Ok(())
 }

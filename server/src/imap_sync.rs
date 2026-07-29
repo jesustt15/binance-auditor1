@@ -274,7 +274,7 @@ pub async fn run_imap_sync(
     let imap_port = creds.imap_port as u16;
 
     // 3. Connect to IMAP (sync blocking in a tokio blocking context)
-    let stats = tokio::task::spawn_blocking({
+    let (fetch_stats, collected_emails) = tokio::task::spawn_blocking({
         let imap_user = imap_user.clone();
         let imap_password = imap_password.clone();
         let imap_host = imap_host.clone();
@@ -293,7 +293,27 @@ pub async fn run_imap_sync(
     .map_err(|e| format!("IMAP task join error: {}", e))?
     .map_err(|e| format!("IMAP sync error: {}", e))?;
 
-    // 4. Update last_sync_at
+    // 4. Process collected emails (async: anti-fraud + DB persistence)
+    let stats = if collected_emails.is_empty() {
+        fetch_stats
+    } else {
+        tracing::info!(
+            "Procesando {} emails fetcheados ({} en total)...",
+            collected_emails.len(),
+            fetch_stats.total_procesados,
+        );
+        process_synced_emails(pool, &collected_emails).await.unwrap_or_else(|e| {
+            tracing::error!("Error procesando emails: {}", e);
+            SyncStats {
+                nuevos: 0,
+                total_procesados: collected_emails.len(),
+                duplicados: 0,
+                en_cuarentena: 0,
+            }
+        })
+    };
+
+    // 5. Update last_sync_at
     let _ = db::update_last_sync(pool, creds.id).await;
 
     Ok(stats)
@@ -305,7 +325,7 @@ fn sync_emails_blocking(
     imap_host: &str,
     imap_port: u16,
     historical_since: Option<&str>,
-) -> Result<SyncStats, String> {
+) -> Result<(SyncStats, Vec<(u32, Vec<u8>, String)>), String> {
     use std::net::{TcpStream, ToSocketAddrs};
     use std::time::Duration;
     use rustls_connector::{
@@ -389,25 +409,19 @@ fn sync_emails_blocking(
     let total = sorted_uids.len();
     if total == 0 {
         session.logout().map_err(|e| format!("IMAP logout error: {}", e))?;
-        return Ok(SyncStats {
+        return Ok((SyncStats {
             nuevos: 0,
             total_procesados: 0,
             duplicados: 0,
             en_cuarentena: 0,
-        });
+        }, Vec::new()));
     }
 
-    let  nuevos = 0i64;
-    let  duplicados = 0i64;
-    let  en_cuarentena = 0i64;
     let mut actual = 0usize;
 
     // We need a PgPool to persist — but we're in a blocking context.
     // We can't async-await sqlx here. Instead, we collect results and return them
     // for the async caller to persist.
-    // Actually, for simplicity, let's collect email data and return it.
-    // BUT the current architecture expects persistence during sync. Let me adjust:
-    // We'll collect emails into a Vec and return them for the async layer to process.
 
     let mut collected_emails: Vec<(u32, Vec<u8>, String)> = Vec::new(); // (uid, raw_bytes, subject)
 
@@ -439,12 +453,12 @@ fn sync_emails_blocking(
         .logout()
         .map_err(|e| format!("IMAP logout error: {}", e))?;
 
-    Ok(SyncStats {
-        nuevos,
+    Ok((SyncStats {
+        nuevos: 0,
         total_procesados: actual,
-        duplicados,
-        en_cuarentena,
-    })
+        duplicados: 0,
+        en_cuarentena: 0,
+    }, collected_emails))
 }
 
 /// Process collected emails with anti-fraud and persist to DB

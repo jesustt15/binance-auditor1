@@ -49,23 +49,45 @@ pub async fn run_migrations(pool: &PgPool) -> Result<(), String> {
     Ok(())
 }
 
-/// Crea el usuario admin por defecto si no existe (solo para primer arranque).
+/// Crea el usuario admin con password aleatorio si no existe (solo para primer arranque).
+/// Fuerza cambio de contraseña en el primer login (must_change_password=true).
 pub async fn seed_admin(pool: &PgPool) -> Result<(), String> {
     use crate::auth;
+    use rand::Rng;
+
     let exists: (bool,) = sqlx::query_as("SELECT EXISTS(SELECT 1 FROM users WHERE username = 'admin')")
         .fetch_one(pool)
         .await
         .map_err(|e| format!("Error verificando admin: {}", e))?;
 
     if !exists.0 {
-        let hash = auth::hash_password("admin123")
+        // Generar password aleatorio de 24 caracteres alfanumericos
+        let charset: &[u8] = b"ABCDEFGHJKLMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789!@#$%";
+        let mut rng = rand::thread_rng();
+        let password: String = (0..24).map(|_| {
+            let idx = rng.gen_range(0..charset.len());
+            charset[idx] as char
+        }).collect();
+
+        let hash = auth::hash_password(&password)
             .map_err(|e| format!("Error hasheando password: {}", e))?;
-        sqlx::query("INSERT INTO users (username, password_hash, role) VALUES ('admin', $1, 'admin')")
+        sqlx::query(
+            "INSERT INTO users (username, password_hash, role, must_change_password)
+             VALUES ('admin', $1, 'admin', true)"
+        )
             .bind(&hash)
             .execute(pool)
             .await
             .map_err(|e| format!("Error creando admin: {}", e))?;
-        tracing::info!("Usuario admin por defecto creado (admin / admin123). CAMBIALO en produccion!");
+
+        // Loggear la password UNA sola vez para que el admin la capture de los logs
+        tracing::warn!("================================================================");
+        tracing::warn!("  USUARIO ADMIN CREADO — GUARDA ESTA CONTRASEÑA:");
+        tracing::warn!("  Usuario : admin");
+        tracing::warn!("  Password: {}", password);
+        tracing::warn!("  Deberas cambiarla en el primer login.");
+        tracing::warn!("================================================================");
+        eprintln!("[ADMIN-PASSWORD] {}", password);
     }
 
     Ok(())

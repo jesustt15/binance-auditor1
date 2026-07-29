@@ -1,6 +1,7 @@
 import { useState, type FormEvent } from 'react'
 import { useAuth } from '../App'
 import { api } from '../lib/api'
+import { useToast } from '../components/Toast'
 
 interface Props {
   onPasswordChanged: () => void
@@ -12,20 +13,28 @@ export default function ChangePassword({ onPasswordChanged }: Props) {
   const [newPassword, setNewPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
   const [loading, setLoading] = useState(false)
-  const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState(false)
+  const { toast } = useToast()
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault()
-    setError(null)
 
-    if (newPassword.length < 6) {
-      setError('La contraseña debe tener al menos 6 caracteres')
+    if (newPassword.length < 8) {
+      toast('La contraseña debe tener al menos 8 caracteres', 'warning')
+      return
+    }
+    // Check complexity
+    const hasUpper = /[A-Z]/.test(newPassword)
+    const hasLower = /[a-z]/.test(newPassword)
+    const hasDigit = /\d/.test(newPassword)
+    const hasSpecial = /[^A-Za-z0-9]/.test(newPassword)
+    if (!hasUpper || !hasLower || !hasDigit || !hasSpecial) {
+      toast('La contraseña debe incluir mayúsculas, minúsculas, números y caracteres especiales', 'warning')
       return
     }
 
     if (newPassword !== confirmPassword) {
-      setError('Las contraseñas no coinciden')
+      toast('Las contraseñas no coinciden', 'warning')
       return
     }
 
@@ -34,9 +43,11 @@ export default function ChangePassword({ onPasswordChanged }: Props) {
     try {
       await api.changePassword(currentPassword, newPassword)
       setSuccess(true)
+      toast('¡Contraseña actualizada!', 'success')
       setTimeout(() => onPasswordChanged(), 1500)
-    } catch (err: any) {
-      setError(typeof err === 'string' ? err : err?.message || 'Error al cambiar la contraseña')
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err ?? 'Error al cambiar la contraseña')
+      toast(msg, 'error')
     } finally {
       setLoading(false)
     }
@@ -82,10 +93,10 @@ export default function ChangePassword({ onPasswordChanged }: Props) {
                 required
                 value={newPassword}
                 onChange={(e) => setNewPassword(e.target.value)}
-                minLength={6}
                 className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-amber-500 text-slate-200"
-                placeholder="mínimo 6 caracteres"
+                placeholder="8+ caracteres, mayúsculas, minúsculas, números y especiales"
               />
+              <p className="text-[10px] text-slate-500 mt-1">Mínimo 8 caracteres con mayúsculas, minúsculas, números y símbolos</p>
             </div>
 
             <div>
@@ -97,7 +108,6 @@ export default function ChangePassword({ onPasswordChanged }: Props) {
                 required
                 value={confirmPassword}
                 onChange={(e) => setConfirmPassword(e.target.value)}
-                minLength={6}
                 className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-amber-500 text-slate-200"
                 placeholder="repetir contraseña"
               />
@@ -110,10 +120,6 @@ export default function ChangePassword({ onPasswordChanged }: Props) {
             >
               {loading ? 'Cambiando...' : 'Cambiar Contraseña'}
             </button>
-
-            {error && (
-              <p className="text-sm text-rose-400 text-center">{error}</p>
-            )}
           </form>
         )}
 
